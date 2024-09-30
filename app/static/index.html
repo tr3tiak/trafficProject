@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Ваши предыдущие теги head -->
+    <title>Leaflet Map with Bootstrap</title>
+    <!-- Подключаем стили Bootstrap и Leaflet -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Подключаем стили Leaflet.markercluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    <!-- Ваши остальные стили и скрипты -->
+    <style>
+        #map {
+            height: 80vh;
+            width: 100%;
+        }
+
+        .popup-content {
+            padding: 10px;
+        }
+
+        /* Стили для боковой панели */
+        #sidebar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            max-height: 90vh;
+            overflow-y: auto;
+            background: white;
+            padding: 15px;
+            z-index: 1000;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Карта -->
+<div id="map"></div>
+
+<div id="sidebar" class="card">
+    <div class="card-body">
+        <h5 class="card-title">Настройки расчета нагрузки</h5>
+        <form id="constantsForm">
+            <div class="form-group">
+                <label for="workK">Коэффициент занятости (workK):</label>
+                <input type="number" step="0.01" class="form-control" id="workK" value="0.57">
+            </div>
+            <div class="form-group">
+                <label for="modalSplitCar">Модальный сплит авто (modalSplitCar):</label>
+                <input type="number" step="0.01" class="form-control" id="modalSplitCar" value="0.3">
+            </div>
+            <div class="form-group">
+                <label for="modalSplitMetro">Модальный сплит метро (modalSplitMetro):</label>
+                <input type="number" step="0.01" class="form-control" id="modalSplitMetro" value="0.7">
+            </div>
+            <div class="form-group">
+                <label for="carK">Коэффициент заполнения авто (carK):</label>
+                <input type="number" step="0.1" class="form-control" id="carK" value="1.2">
+            </div>
+            <div class="form-group">
+                <label for="commercialPeakK">Пиковый коэффициент коммерческой площади (commercialPeakK):</label>
+                <input type="number" step="0.01" class="form-control" id="commercialPeakK" value="0.35">
+            </div>
+            <div class="form-group">
+                <label for="residentalPeakK">Пиковый коэффициент жилой площади (residentalPeakK):</label>
+                <input type="number" step="0.01" class="form-control" id="residentalPeakK" value="0.1">
+            </div>
+            <div class="form-group">
+                <label for="directionCenterK">Коэффициент направления в центр (directionCenterK):</label>
+                <input type="number" step="0.01" class="form-control" id="directionCenterK" value="0.8">
+            </div>
+            <div class="form-group">
+                <label for="directionOutK">Коэффициент направления из центра (directionOutK):</label>
+                <input type="number" step="0.01" class="form-control" id="directionOutK" value="0.2">
+            </div>
+            <button type="button" class="btn btn-primary btn-block" onclick="updateConstants()">Обновить константы
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Подключаем скрипты Bootstrap и другие библиотеки -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<!-- Подключаем плагин Leaflet.markercluster -->
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+<!-- Ваши остальные скрипты -->
+<script>
+    // Инициализация карты
+    var map = L.map('map', {attributionControl: false}).setView([55.7558, 37.6173], 17);
+
+    // Добавление базового слоя карты
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Инициализация FeatureGroup для хранения полигонов и полилиний
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    // Добавление панели инструментов для рисования
+    var drawControl = new L.Control.Draw({
+        edit: {
+            featureGroup: drawnItems
+        },
+        draw: {
+            polyline: false,
+            rectangle: false,
+            circle: false,
+            marker: false,
+            circlemarker: false
+        }
+    });
+    map.addControl(drawControl);
+
+    // Массив для хранения сегментов путей
+    var waySegmentsMap = {};
+    var selectedPolyline = null; // Хранит выделенную линию для изменения стиля
+
+    // Обработчик создания полигона
+    map.on(L.Draw.Event.CREATED, function (event) {
+        var layer = event.layer;
+        drawnItems.addLayer(layer);
+
+        // Данные для каждого полигона
+        var polygonData = {
+            commercialArea: 214000,
+            commercialAreaK: 25,
+            residentialArea: 190000,
+            residentialAreaK: 35
+        };
+
+        polygonDataMap[layer._leaflet_id] = {}
+        for (let polygonDataKey in polygonData) {
+            polygonDataMap[layer._leaflet_id][polygonDataKey] = polygonData[polygonDataKey];
+        }
+
+        // Добавляем логику для попапов
+        layer.bindPopup(createPopupContent(layer, polygonData)).openPopup();
+    });
+
+    // Создание контента попапа с использованием Bootstrap
+    function createPopupContent(layer, data) {
+        return `
+            <div class="popup-content">
+                <h5 class="text-primary">Параметры</h5>
+                <div class="form-group">
+                    <label for="commercialArea">Коммерческая площадь (м²):</label>
+                    <input id="commercialArea" type="number" class="form-control" value="${data.commercialArea}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialArea', this.value)" />
+                    <label for="commercialAreaK">Площадь на человека (м²):</label>
+                    <input id="commercialAreaK" type="number" class="form-control" value="${data.commercialAreaK}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialAreaK', this.value)" />
+                </div>
+                <div class="form-group">
+                    <label for="residentialArea">Жилая площадь (м²):</label>
+                    <input id="residentialArea" type="number" class="form-control" value="${data.residentialArea}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentialArea', this.value)" />
+                    <label for="residentialAreaK">Площадь на человека (м²):</label>
+                    <input id="residentialAreaK" type="number" class="form-control" value="${data.residentialAreaK}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentialAreaK', this.value)" />
+                </div>
+                <button id="routeBtn" onclick="calculateAll('${layer._leaflet_id}')" class="btn btn-primary btn-block">Рассчитать нагрузку</button>
+            </div>
+        `;
+    }
+
+    // Хранение данных по каждому слою
+    var polygonDataMap = {};
+
+    // Обновление данных полигона
+    function updatePolygonData(layerId, field, value) {
+        if (!polygonDataMap[layerId]) {
+            polygonDataMap[layerId] = {};
+        }
+        polygonDataMap[layerId][field] = parseFloat(value);
+        let curlayer = drawnItems.getLayer(layerId);
+        curlayer.getPopup().setContent(createPopupContent(curlayer, polygonDataMap[layerId]));
+    }
+
+    // Объект для хранения констант нагрузки
+    var loadConstants = {
+        workK: 0.57,
+        modalSplitCar: 0.3,
+        modalSplitMetro: 0.7,
+        carK: 1.2,
+        commercialPeakK: 0.35,
+        residentalPeakK: 0.1,
+        directionCenterK: 0.8,
+        directionOutK: 0.2
+    };
+
+    // Функция обновления констант из формы
+    function updateConstants() {
+        loadConstants.workK = parseFloat(document.getElementById('workK').value);
+        loadConstants.modalSplitCar = parseFloat(document.getElementById('modalSplitCar').value);
+        loadConstants.modalSplitMetro = parseFloat(document.getElementById('modalSplitMetro').value);
+        loadConstants.carK = parseFloat(document.getElementById('carK').value);
+        loadConstants.commercialPeakK = parseFloat(document.getElementById('commercialPeakK').value);
+        loadConstants.residentalPeakK = parseFloat(document.getElementById('residentalPeakK').value);
+        loadConstants.directionCenterK = parseFloat(document.getElementById('directionCenterK').value);
+        loadConstants.directionOutK = parseFloat(document.getElementById('directionOutK').value);
+        alert('Константы обновлены!');
+    }
+
+    // Функция расчета нагрузки
+    function calculateLoad(layerID, type, direction) {
+        var data = polygonDataMap[layerID];
+        // Логика расчета нагрузки с использованием данных из попапа
+        var totalCommercialHumans = data.commercialArea / data.commercialAreaK;
+        var totalResidentialHumans = data.residentialArea / data.residentialAreaK;
+
+        const workK = loadConstants.workK;
+        const modalSplit = type === 'car' ? loadConstants.modalSplitCar : loadConstants.modalSplitMetro;
+        const carK = type === 'car' ? loadConstants.carK : 1;
+
+        const commercialPeakK = loadConstants.commercialPeakK;
+        const residentalPeakK = loadConstants.residentalPeakK;
+
+        const directionK = direction === 'center' ? loadConstants.directionCenterK : loadConstants.directionOutK;
+
+        const loadResidental = totalResidentialHumans * workK * modalSplit / carK * residentalPeakK * directionK;
+        const loadCommercial = totalCommercialHumans * workK * modalSplit / carK * commercialPeakK * directionK;
+
+        return loadCommercial + loadResidental;
+    }
+
+    // Функция для получения way ids по узлам OSM
+    async function getWayIdsByNodes(nodes) {
+        try {
+            const nodeIds = nodes.join(',');
+            const overpassQuery = `
+                [out:json];
+                node(id:${nodeIds});
+                way(bn);
+                out geom;
+            `;
+            const response = await axios.post('https://overpass-api.de/api/interpreter', overpassQuery, {
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+            });
+
+            const ways = response.data.elements.filter(el => el.type === 'way');
+            const waysMap = ways.map(way => ({id: way.id, nodes: way.nodes}));
+
+            const orderedWayIds = [];
+            for (let i = 0; i < nodes.length - 1; i++) {
+                const fromNode = nodes[i];
+                const toNode = nodes[i + 1];
+                const foundWay = waysMap.find(way => way.nodes.includes(fromNode) && way.nodes.includes(toNode));
+                if (foundWay && !orderedWayIds.includes(foundWay.id)) {
+                    orderedWayIds.push(foundWay.id);
+                }
+            }
+            return orderedWayIds;
+        } catch (error) {
+            console.error('Ошибка при запросе данных:', error);
+            throw new Error('Не удалось получить way ids');
+        }
+    }
+
+    var segmentsFG = new L.FeatureGroup();
+    var segmentMarkersCluster = L.markerClusterGroup();
+    var stationDataMap = {};
+
+    async function calculateAll(layerId) {
+        await calculateRoute(layerId);
+        await calculateMetros(layerId);
+    }
+
+    async function calculateMetros(layerId) {
+        let polygonLayer = drawnItems.getLayer(layerId);
+        const polygonCenter = polygonLayer.getBounds().getCenter();
+
+        // Calculate the additional load for metros (both towards the center and out)
+        let additionalLoadCenter = calculateLoad(layerId, 'metro', 'center');
+        let additionalLoadOut = calculateLoad(layerId, 'metro', 'out');
+        let totalAdditionalLoad = additionalLoadCenter + additionalLoadOut;
+
+        let radius = 1500;
+        // Overpass query to fetch metro and MCD stations
+        const overpassQuery = `
+        [out:json];
+        (
+        node["railway"="station"](around:${radius},${polygonCenter.lat},${polygonCenter.lng});
+        node["railway"="halt"](around:${radius},${polygonCenter.lat},${polygonCenter.lng});
+        );
+        out geom;
+    `;
+
+        try {
+            // Fetch metro and MCD stations
+            const response = await axios.post('https://overpass-api.de/api/interpreter', overpassQuery, {
+                headers: {'Content-Type': 'text/plain'}
+            });
+
+            const reachableStations = response.data.elements;
+
+            // Calculate total current passenger flow for all reachable stations
+            const totalPassengerFlow = reachableStations.reduce((total, station) => total + 500, 0);  // Assume 500 passengers per hour for all stations
+
+            let nodeIds = [];
+            reachableStations.forEach(station => {
+                nodeIds.push(station.id);
+            });
+            let metroFlowData = await getMetroData(nodeIds);
+
+            // Distribute additional load proportionally
+            reachableStations.forEach(station => {
+                let stationKey = station.id;
+
+                const currentPassengerFlow = metroFlowData[stationKey].flow || 500; // Assume 500 passengers per station
+                const stationAdditionalLoad = (currentPassengerFlow / totalPassengerFlow) * totalAdditionalLoad;
+
+                if (stationDataMap[stationKey]) {
+                    // Если станция уже есть, увеличиваем дополнительную нагрузку
+                    stationDataMap[stationKey].trafficData.additionalLoad += Math.round(stationAdditionalLoad);
+                    // Обновляем попап
+                    stationDataMap[stationKey].marker.getPopup().setContent(`
+                        <h5>Станция метро/МЦД</h5>
+                        <p>Текущая пассажиропоток: ${stationDataMap[stationKey].trafficData.currentPassengerFlow} чел/час</p>
+                        <p>Пропускная способность: ${stationDataMap[stationKey].trafficData.capacityPerHour} чел/час</p>
+                        <p>Дополнительный поток: ${stationDataMap[stationKey].trafficData.additionalLoad} чел/час</p>
+                    `);
+                } else {
+                    // Создаем новую запись для станции
+                    let marker = L.marker([station.lat, station.lon])
+                        .bindPopup(`
+                            <h5>Станция метро/МЦД</h5>
+                            <p>Текущая пассажиропоток: ${currentPassengerFlow} чел/час</p>
+                            <p>Пропускная способность: ${metroFlowData[stationKey].bandwidth} чел/час</p>
+                            <p>Дополнительный поток: ${Math.round(stationAdditionalLoad)} чел/час</p>
+                        `);
+
+                    // Добавляем маркер на карту
+                    marker.addTo(map);
+                    stationDataMap[stationKey] = {
+                        marker: marker,
+                        trafficData: {
+                            currentPassengerFlow: currentPassengerFlow ,
+                            capacityPerHour: metroFlowData[stationKey].bandwidth || 1000,
+                            additionalLoad: Math.floor(stationAdditionalLoad),
+                        },
+                    };
+                }
+            });
+        } catch (error) {
+            console.error('Ошибка при запросе данных:', error);
+            throw new Error('Не удалось получить станции метро и МЦД');
+        }
+    }
+
+
+    // Функция расчета маршрута
+    async function calculateRoute(layerId) {
+        let polygonLayer = drawnItems.getLayer(layerId);
+        const polygonCenter = polygonLayer.getBounds().getCenter();
+        const startCoords = [polygonCenter.lat, polygonCenter.lng];
+        const moscowCoords = [55.7558, 37.6173];
+
+        try {
+            let allWayIds = [];
+            const response = await axios.get(`http://127.0.0.1:5000/route/v1/driving/${startCoords[1]},${startCoords[0]};${moscowCoords[1]},${moscowCoords[0]}?overview=false&alternatives=true&steps=false&annotations=true`);
+            let additionalLoad = calculateLoad(layerId, 'car', 'center') / response.data.routes.length
+            for (let routesKey in response.data.routes) {
+                const nodesLeg = response.data.routes[routesKey].legs[0].annotation.nodes;
+
+                const wayIds = await getWayIdsByNodes(nodesLeg);
+                allWayIds = [...new Set([...allWayIds, ...wayIds])];  // Собираем уникальные way_ids
+                let nodesIdsSet = new Set(nodesLeg);
+
+
+                const wayIdsString = wayIds.join(',');
+                const overpassQuery = `
+[out:json];
+way(id:${wayIdsString});
+out geom;
+`;
+
+                const wayResponse = await axios.post('https://overpass-api.de/api/interpreter', overpassQuery, {
+                    headers: {'Content-Type': 'text/plain'}
+                });
+
+// Мапим новые сегменты в объект
+                wayResponse.data.elements.forEach(wayData => {
+                    if (wayData.id === 1150475092) {
+                        console.log("!!!");
+                    }
+                    if (wayData.geometry) {
+                        let segmentId = wayData.id;
+                        if (waySegmentsMap[segmentId]) {
+// Если сегмент уже существует, обновляем дополнительную нагрузку
+
+//todo: в частях, которые есть, обновляем нагрузку, при этом рисуем новые сегменты
+                            waySegmentsMap[segmentId].trafficData.additionalLoad += Math.floor(additionalLoad);
+                        } else {
+// Если сегмент новый, добавляем его в объект
+                            let geom = [];
+                            wayData.geometry.map((point, idx) => {
+                                if (nodesIdsSet.has(wayData.nodes[idx])) {
+                                    geom.push([point.lat, point.lon]);
+                                }
+                            })
+                            waySegmentsMap[segmentId] = {
+                                id: segmentId,
+                                geometry: geom,
+                                trafficData: {
+                                    vehiclesPerHour: Math.floor(Math.random() * 1000) + 500,
+                                    capacityPerHour: 2000,
+                                    additionalLoad: Math.floor(additionalLoad),
+                                },
+                                name: wayData.tags["name"],
+                                lanes: wayData.tags["lanes"]
+                            };
+                        }
+                    }
+                });
+
+
+
+                const wayDataMap = await getWayData(allWayIds);
+                for (let wayDataMapKey in wayDataMap) {
+                    const wayInfo = wayDataMap[wayDataMapKey];  // Доступ к данным по wayId через объект
+                    waySegmentsMap[wayDataMapKey].trafficData.vehiclesPerHour = wayInfo ? wayInfo.flow : Math.floor(Math.random() * 1000) + 500;
+                    waySegmentsMap[wayDataMapKey].trafficData.capacityPerHour = wayInfo ? wayInfo.bandwidth : 2000;
+                }
+
+// Очищаем слои, если они есть
+                segmentsFG.clearLayers();
+                segmentMarkersCluster.clearLayers();
+
+// Рисуем обновленные сегменты
+                drawWaySegments(waySegmentsMap);
+
+            }
+        } catch (error) {
+            console.error('Ошибка при построении маршрута:', error);
+        }
+    }
+
+
+    // Отрисовка полилиний сегментов маршрута
+    function drawWaySegments(segments) {
+        for (let segmentKey in segments) {
+            let segment = segments[segmentKey];
+            const percentage = ((segment.trafficData.vehiclesPerHour + segment.trafficData.additionalLoad) / segment.trafficData.capacityPerHour) * 100;
+            let color;
+
+            // Устанавливаем цвет в зависимости от процента загрузки
+            if (percentage < 50) {
+                color = 'green';
+            } else if (percentage < 80) {
+                color = 'orange';
+            } else {
+                color = 'red';
+            }
+
+            const polyline = L.polyline(segment.geometry, {
+                color: color,
+                opacity: 0.70,
+                weight: 8
+            });
+
+            function getCenterCoords(geometry) {
+                let latSum = 0;
+                let lonSum = 0;
+
+                geometry.forEach(point => {
+                    latSum += point[0];
+                    lonSum += point[1];
+                });
+
+                const centerLat = latSum / geometry.length;
+                const centerLon = lonSum / geometry.length;
+
+                return [centerLat, centerLon];
+            }
+
+            // Отображаем информацию о загруженности рядом с сегментом
+            const centerCoords = getCenterCoords(segment.geometry);
+            const marker = L.marker(centerCoords, {
+                icon: L.divIcon({
+                    className: 'traffic-info',
+                    html: `<div style="background: rgba(255,255,255,0.5); padding: 2px 5px; width: 100px; border-radius: 5px;">
+                          ${segment.trafficData.vehiclesPerHour} ТС/час (+${segment.trafficData.additionalLoad})
+                       </div>`
+                })
+            });
+
+            // Добавляем маркер в кластер
+            segmentMarkersCluster.addLayer(marker);
+
+            marker.on('click', function () {
+                handleSegmentClick(segment, polyline);
+            });
+
+            // Обработчик клика по полилинии
+            polyline.on('click', function () {
+                handleSegmentClick(segment, polyline);
+            });
+
+            segmentsFG.addLayer(polyline);
+        }
+        map.addLayer(segmentsFG);
+        map.addLayer(segmentMarkersCluster);
+    }
+
+    // Обработка клика по сегменту
+    function handleSegmentClick(segment, polyline) {
+        // Если существует выделенная линия, сбрасываем её ширину
+        if (selectedPolyline) {
+            selectedPolyline.setStyle({weight: 8});
+        }
+
+        // Увеличиваем ширину выбранного сегмента
+        polyline.setStyle({weight: 16});
+        selectedPolyline = polyline; // Сохраняем ссылку на выбранную линию
+
+        // Отображаем дополнительную информацию в попапе
+        const segmentCoords = segment.geometry[Math.floor(segment.geometry.length / 2)];
+        popupLayer = L.popup()
+            .setLatLng(segmentCoords)
+            .setContent(`
+                <h5>Сегмент пути</h5>
+                <p>Имя: ${segment.name}</p>
+                <p>Количество полос: ${segment.lanes}</p>
+                <p>Текущая загрузка: ${segment.trafficData.vehiclesPerHour} ТС/час</p>
+                <p>Дополнительная загрузка: ${segment.trafficData.additionalLoad} ТС/час</p>
+                <p>Пропускная способность: ${segment.trafficData.capacityPerHour} ТС/час</p>
+            `);
+
+        map.on('popupclose', function () {
+            if (selectedPolyline) {
+                selectedPolyline.setStyle({weight: 8});
+            }
+        });
+        map.addLayer(popupLayer);
+    }
+
+    async function getWayData(wayIds) {
+        try {
+            const response = await axios.post('http://79.174.95.72:8001/ways', {
+                id: wayIds
+            }, {
+                headers: {'Content-Type': 'application/json'}
+            });
+
+            // Преобразуем массив в объект для быстрого доступа по ID
+            const wayDataMap = {};
+            response.data.way_ids.forEach(way => {
+                wayDataMap[way.id] = way;
+            });
+
+            return wayDataMap;  // Возвращаем объект
+        } catch (error) {
+            console.error('Ошибка получения данных ways:', error);
+            return {};  // Возвращаем пустой объект, если запрос не удался
+        }
+    }
+
+    async function getMetroData(nodeIds) {
+        try {
+            const response = await axios.post('http://79.174.95.72:8001/metro/', {
+                id: nodeIds
+            }, {
+                headers: {'Content-Type': 'application/json'}
+            });
+
+            // Преобразуем массив в объект для быстрого доступа по ID
+            const metroDataMap = {};
+            response.data.metro_ids.forEach(way => {
+                metroDataMap[way.id] = way;
+            });
+
+            return metroDataMap;  // Возвращаем объект
+        } catch (error) {
+            console.error('Ошибка получения данных ways:', error);
+            return {};  // Возвращаем пустой объект, если запрос не удался
+        }
+    }
+
+
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+
+services:
+  postgres:
+    image: postgres:latest  # Используем "latest" для запуска последней версии PostgreSQL
+    environment:
+      POSTGRES_DB: "mydb"  # Имя вашей базы данных
+      POSTGRES_USER: "user"  # Имя пользователя базы данных
+      POSTGRES_PASSWORD: "DP5vR23y"  # Надежный пароль для пользователя
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Хранение данных базы
+      - ./scripts:/docker-entrypoint-initdb.d  # Скрипты для инициализации
+    ports:
+      - "5432:5432"  # Проброс порта PostgreSQL
+  
+  fastapi:
+    build: ./app  # Используем Dockerfile для сборки FastAPI-приложения
+    ports:
+      - "8001:8001"  # Проброс порта для доступа к FastAPI
+    depends_on:
+      - postgres  # FastAPI-сервис зависит от PostgreSQL
+    environment:
+    
+      DATABASE_URL: postgres://user:DP5vR23y@postgres:5432/mydb  # Переменная окружения для подключения к базе данных
+volumes:
+  postgres_data:
