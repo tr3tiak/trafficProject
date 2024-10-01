@@ -109,3 +109,71 @@ async def ret_ways(request: Request):
     except:
         print("json not formatted") 
     return {"ways_ids": resp}
+
+@app.post("/update-ways/")
+async def ret_ways(request: Request):
+    resp = []
+    try:
+        item_data = await request.json()
+        item_data = jsonable_encoder(item_data)
+        for ways in item_data['elements']:
+            id = ways["id"]
+            bandwidth = ways["bandwidth"]
+            flow_list = ways["flow"]
+                    
+            query_ways = f"""UPDATE ways
+            SET bandwidth = :bandwidth 
+            WHERE id = :id;
+            """
+            query_flow = f"""UPDATE flow_ways
+            SET flow = :flow
+            WHERE ways_id = :id AND time = :time;
+            """
+            try:
+                async with database.transaction():
+                    await database.execute(query_ways, values = {"id": int(id), "bandwidth": bandwidth})
+                    for time_str, flow in flow_list.items():
+                        time_obj = datetime.strptime(time_str, '%H:%M').time() 
+                        await database.execute(query_flow, values = {"id": int(id), "time": time_obj, "flow": flow})
+                    resp.append({"id": id, "status": "success"})  # Добавить информацию об успешном обновлении
+            except Exception as e:
+                print(f"Ошибка: {e}")
+                resp.append({"id": id, "status": "error", "message": str(e)}) # Добавить информацию об ошибке
+
+        return {"status": "ok", "data": resp}  # Возвращаем JSON-ответ с результатами
+    except:
+        return {"status": "error", "message": "Invalid JSON format"}  # Возвращаем JSON-ответ об ошибке
+
+@app.post("/update-metro/")
+async def ret_ways(request: Request):
+    resp = []
+    try:
+        item_data = await request.json()
+        item_data = jsonable_encoder(item_data)
+        for ways in item_data['elements']:
+            id = ways["id"]
+            bandwidth = ways["bandwidth"]
+            flow_list = ways["flow"]
+                    
+            query_ways = f"""UPDATE metro
+            SET bandwidth = :bandwidth 
+            WHERE id = :id;
+            """
+            query_flow = f"""UPDATE flow_metro
+            SET flow = :flow
+            WHERE metro_id = :id AND time = :time;
+            """
+            try:
+                async with database.transaction():
+                    await database.execute(query_ways, values = {"id": int(id), "bandwidth": bandwidth})
+                    for time_str, flow in flow_list.items():
+                        time_obj = datetime.strptime(time_str, '%H:%M').time() 
+                        await database.execute(query_flow, values = {"id": int(id), "time": time_obj, "flow": flow})
+                    resp.append({"id": id, "status": "success"})  # Добавить информацию об успешном обновлении
+            except Exception as e:
+                print(f"Ошибка: {e}")
+                resp.append({"id": id, "status": "error", "message": str(e)}) # Добавить информацию об ошибке
+
+        return {"status": "ok", "data": resp}  # Возвращаем JSON-ответ с результатами
+    except:
+        return {"status": "error", "message": "Invalid JSON format"}  # Возвращаем JSON-ответ об ошибке
