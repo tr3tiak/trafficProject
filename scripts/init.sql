@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS flow_metro (
     FOREIGN KEY (metro_id) REFERENCES metro(id)
 );
 
+CREATE UNIQUE INDEX flow_metro_time_id ON flow_ways(time, metro_id);
+
 
 CREATE TABLE IF NOT EXISTS ways (
     id BIGINT PRIMARY KEY UNIQUE,
@@ -26,4 +28,5 @@ CREATE TABLE IF NOT EXISTS flow_ways (
     FOREIGN KEY (ways_id) REFERENCES ways(id)
 );
 
+CREATE UNIQUE INDEX flow_ways_time_id ON flow_ways(time, ways_id);
 

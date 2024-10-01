@@ -20,27 +20,17 @@ password = "DP5vR23y"
 # SQL-запрос для добавления строки
 sql_ways = """
 INSERT INTO ways (id, bandwidth)
-VALUES (%s, %s)
+VALUES (%s, %s),
 ON CONFLICT (id)
 DO UPDATE SET 
     bandwidth = EXCLUDED.bandwidth
 """
-
-sql_flow =  """
-DO $$
-BEGIN
-    -- Проверяем, существует ли запись
-    IF EXISTS (SELECT 1 FROM flow_ways WHERE ways_id = %s AND time = %s) THEN
-        -- Если существует, обновляем запись
-        UPDATE flow_ways
-        SET flow = %s  -- Укажите значение для обновления
-        WHERE ways_id = %s AND time = %s;
-    ELSE
-        -- Если не существует, вставляем новую запись
-        INSERT INTO flow_ways (ways_id, time, flow)
-        VALUES (%s, %s, %s);  -- Укажите значения для time и flow
-    END IF;
-END $$;
+sql_flow = """
+INSERT INTO flow_ways (ways_id, time, flow)
+VALUES (%s, %s, %s),
+ON CONFLICT (ways_id, time)
+DO UPDATE SET 
+    flow = EXCLUDED.flow
 """
 
 try:
@@ -59,7 +49,7 @@ try:
             # Выполнение SQL-запроса
             cur.execute(sql_ways, (id, bandwidth))
             for time, flow in flow_list.items():
-                cur.execute(sql_flow, (id, time, flow, id, time, id, time, flow))
+                cur.execute(sql_flow, (id, time, flow))
             # Сохранение изменений сразу после каждой строки
             conn.commit()
         except Exception as e:

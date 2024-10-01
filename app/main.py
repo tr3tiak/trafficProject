@@ -143,14 +143,20 @@ async def upd_ways(request: Request):
             bandwidth = ways["bandwidth"]
             flow_list = ways["flow"]
                     
-            query_ways = f"""UPDATE ways
-            SET bandwidth = :bandwidth 
-            WHERE id = :id;
-            """
-            query_flow = f"""UPDATE flow_ways
-            SET flow = :flow
-            WHERE ways_id = :id AND time = :time;
-            """
+            query_ways = f"""
+INSERT INTO ways (id, bandwidth)
+VALUES (:id, :bandwidth),
+ON CONFLICT (id)
+DO UPDATE SET 
+    bandwidth = EXCLUDED.bandwidth
+"""
+            query_flow = f"""
+INSERT INTO flow_ways (ways_id, time, flow)
+VALUES (:id, :time, :flow),
+ON CONFLICT (ways_id, time)
+DO UPDATE SET 
+    flow = EXCLUDED.flow
+"""
             try:
                 async with database.transaction():
                     await database.execute(query_ways, values = {"id": int(id), "bandwidth": bandwidth})
@@ -172,22 +178,28 @@ async def upd_metro(request: Request):
     try:
         item_data = await request.json()
         item_data = jsonable_encoder(item_data)
-        for ways in item_data['elements']:
-            id = ways["id"]
-            bandwidth = ways["bandwidth"]
-            flow_list = ways["flow"]
+        for metro in item_data['elements']:
+            id = metro["id"]
+            bandwidth = metro["bandwidth"]
+            flow_list = metro["flow"]
                     
-            query_ways = f"""UPDATE metro
-            SET bandwidth = :bandwidth 
-            WHERE id = :id;
-            """
-            query_flow = f"""UPDATE flow_metro
-            SET flow = :flow
-            WHERE metro_id = :id AND time = :time;
-            """
+            query_metro = f"""
+INSERT INTO metro (id, bandwidth)
+VALUES (:id, :bandwith),
+ON CONFLICT (id)
+DO UPDATE SET 
+    bandwidth = EXCLUDED.bandwidth
+"""
+            query_flow = f"""
+INSERT INTO flow_metro (metro_id, time, flow)
+VALUES (:id, :time, :flow),
+ON CONFLICT (metro_id, time)
+DO UPDATE SET 
+    flow = EXCLUDED.flow
+"""
             try:
                 async with database.transaction():
-                    await database.execute(query_ways, values = {"id": int(id), "bandwidth": bandwidth})
+                    await database.execute(query_metro, values = {"id": int(id), "bandwidth": bandwidth})
                     for time_str, flow in flow_list.items():
                         time_obj = datetime.strptime(time_str, '%H:%M').time() 
                         await database.execute(query_flow, values = {"id": int(id), "time": time_obj, "flow": flow})

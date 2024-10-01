@@ -18,29 +18,20 @@ user = "user"
 password = "DP5vR23y"
 
 # SQL-запрос для добавления строки
+# SQL-запрос для добавления строки
 sql_metro = """
-INSERT INTO metro (id, name, bandwidth)
-VALUES (%s, %s, %s)
+INSERT INTO metro (id, bandwidth)
+VALUES (%s, %s),
 ON CONFLICT (id)
 DO UPDATE SET 
     bandwidth = EXCLUDED.bandwidth
 """
-
-sql_flow =  """
-DO $$
-BEGIN
-    -- Проверяем, существует ли запись
-    IF EXISTS (SELECT 1 FROM flow_metro WHERE metro_id = %s AND time = %s) THEN
-        -- Если существует, обновляем запись
-        UPDATE flow_metro
-        SET flow = %s  -- Укажите значение для обновления
-        WHERE metro_id = %s AND time = %s;
-    ELSE
-        -- Если не существует, вставляем новую запись
-        INSERT INTO flow_metro (metro_id, time, flow)
-        VALUES (%s, %s, %s);  -- Укажите значения для time и flow
-    END IF;
-END $$;
+sql_flow = """
+INSERT INTO flow_metro (metro_id, time, flow)
+VALUES (%s, %s, %s),
+ON CONFLICT (metro_id, time)
+DO UPDATE SET 
+    flow = EXCLUDED.flow
 """
 
 try:
@@ -60,7 +51,7 @@ try:
             # Выполнение SQL-запроса
             cur.execute(sql_metro, (id, name, bandwidth))
             for time, flow in flow_list.items():
-                cur.execute(sql_flow, (id, time, flow, id, time, id, time, flow))
+                cur.execute(sql_flow, (id, time, flow))
             # Сохранение изменений сразу после каждой строки
             conn.commit()
         except Exception as e:
