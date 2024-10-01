@@ -49,7 +49,7 @@ async def read_root():
 
 @app.get("{file_name}")
 async def get_file(file_name: str):
-    file_path = os.path.join("css", file_name)
+    file_path = os.path.join("static", "css", file_name)
 
     if file_name.endswith(".css"):
         with open(file_path, "r") as file:
@@ -61,7 +61,7 @@ async def get_file(file_name: str):
 
 @app.get("{file_name}")
 async def get_file(file_name: str):
-    file_path = os.path.join("scripts", file_name)
+    file_path = os.path.join("static", "scripts", file_name)
 
     if file_name.endswith(".js"):
         with open(file_path, "r") as file:
