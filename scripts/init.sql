@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS flow_metro (
     FOREIGN KEY (metro_id) REFERENCES metro(id)
 );
 
-CREATE UNIQUE INDEX flow_metro_time_id ON flow_ways(time, metro_id);
+CREATE UNIQUE INDEX flow_metro_time_id ON flow_metro(time, metro_id);
 
 
 CREATE TABLE IF NOT EXISTS ways (
