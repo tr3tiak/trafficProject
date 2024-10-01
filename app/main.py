@@ -145,14 +145,14 @@ async def upd_ways(request: Request):
                     
             query_ways = f"""
 INSERT INTO ways (id, bandwidth)
-VALUES (:id, :bandwidth),
+VALUES (:id, :bandwidth)
 ON CONFLICT (id)
 DO UPDATE SET 
     bandwidth = EXCLUDED.bandwidth
 """
             query_flow = f"""
 INSERT INTO flow_ways (ways_id, time, flow)
-VALUES (:id, :time, :flow),
+VALUES (:id, :time, :flow)
 ON CONFLICT (ways_id, time)
 DO UPDATE SET 
     flow = EXCLUDED.flow
@@ -185,14 +185,14 @@ async def upd_metro(request: Request):
                     
             query_metro = f"""
 INSERT INTO metro (id, bandwidth)
-VALUES (:id, :bandwith),
+VALUES (:id, :bandwith)
 ON CONFLICT (id)
 DO UPDATE SET 
     bandwidth = EXCLUDED.bandwidth
 """
             query_flow = f"""
 INSERT INTO flow_metro (metro_id, time, flow)
-VALUES (:id, :time, :flow),
+VALUES (:id, :time, :flow)
 ON CONFLICT (metro_id, time)
 DO UPDATE SET 
     flow = EXCLUDED.flow
