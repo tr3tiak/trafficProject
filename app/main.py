@@ -47,9 +47,9 @@ async def read_root():
         content = file.read()
     return HTMLResponse(content=content)
 
-@app.get("/css/{file_name}")
+@app.get("{file_name}")
 async def get_file(file_name: str):
-    file_path = os.path.join("static", file_name)
+    file_path = os.path.join("static", "css", file_name)
 
     if file_name.endswith(".css"):
         with open(file_path, "r") as file:
@@ -59,9 +59,9 @@ async def get_file(file_name: str):
         return {"error": "Invalid file extension"}
 
 
-@app.get("/scripts/{file_name}")
+@app.get("{file_name}")
 async def get_file(file_name: str):
-    file_path = os.path.join("static", file_name)
+    file_path = os.path.join("static", "scripts", file_name)
 
     if file_name.endswith(".js"):
         with open(file_path, "r") as file:
