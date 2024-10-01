@@ -111,7 +111,7 @@ async def ret_ways(request: Request):
     return {"ways_ids": resp}
 
 @app.post("/update-ways/")
-async def ret_ways(request: Request):
+async def upd_ways(request: Request):
     resp = []
     try:
         item_data = await request.json()
@@ -145,7 +145,7 @@ async def ret_ways(request: Request):
         return {"status": "error", "message": "Invalid JSON format"}  # Возвращаем JSON-ответ об ошибке
 
 @app.post("/update-metro/")
-async def ret_ways(request: Request):
+async def upd_metro(request: Request):
     resp = []
     try:
         item_data = await request.json()
