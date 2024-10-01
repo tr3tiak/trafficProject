@@ -4,7 +4,7 @@ from databases import Database
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from datetime import datetime
 import os
 
@@ -47,6 +47,28 @@ async def read_root():
         content = file.read()
     return HTMLResponse(content=content)
 
+@app.get("/css/{file_name}")
+async def get_file(file_name: str):
+    file_path = os.path.join("static", file_name)
+
+    if file_name.endswith(".css"):
+        with open(file_path, "r") as file:
+            content = file.read()
+        return PlainTextResponse(content=content)
+    else:
+        return {"error": "Invalid file extension"}
+
+
+@app.get("/scripts/{file_name}")
+async def get_file(file_name: str):
+    file_path = os.path.join("static", file_name)
+
+    if file_name.endswith(".js"):
+        with open(file_path, "r") as file:
+            data = file.read()
+        return HTMLResponse(content=data)
+    else:
+        return {"error": "Invalid file extension"}
  
 
 @app.post("/metro/")
