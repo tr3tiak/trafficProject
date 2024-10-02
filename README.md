@@ -60,7 +60,7 @@ json
 
 ### 1. Получение данных о метро
 
-Адрес:  https://api.example.com/metro
+Адрес:  /metro
 
 Метод:  POST
 
@@ -88,7 +88,7 @@ json
 
 ### 2. Получение данных о дорогах
 
-Адрес:  https://api.example.com/ways
+Адрес:  /ways
 
 Метод:  POST
 
@@ -119,7 +119,7 @@ json
 
 ### 3. Обновление данных о дорогах
 
-Адрес:  https://api.example.com/update-ways
+Адрес:  /update-ways
 
 Метод:  POST
 
@@ -146,7 +146,7 @@ json
 
 ### 4. Обновление данных о метро
 
-Адрес:  https://api.example.com/update-metro
+Адрес:  /update-metro
 
 Метод:  POST
 
