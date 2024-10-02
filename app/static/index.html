@@ -257,11 +257,11 @@
 
         .popup-content {
             padding: 10px;
-            max-height: 40vh;
+            max-height: 45vh;
         }
 
         .scroll-popup-content {
-            max-height: 35vh;
+            max-height: 40vh;
             overflow-y: scroll;
         }
 
@@ -388,6 +388,29 @@
         }
 
     </style>
+    <style>
+
+        .leaflet-draw-draw-polygon {
+            background-image: none !important; /* Скрываем иконку полигона */
+            width: auto !important; /* Автоматическая ширина для текста */
+            height: auto  !important;
+            padding: 5px 10px; /* Добавляем отступы */
+            background-color: #fff; /* Задаем цвет фона */
+            border: 1px solid #ccc; /* Добавляем границу */
+        }
+
+        /* Добавляем кастомный текст */
+        .leaflet-draw-draw-polygon::before {
+            content: 'Добавить объект застройки'; /* Устанавливаем текст */
+            font-size: 14px; /* Размер шрифта */
+            color: #333; /* Цвет текста */
+        }
+
+        .leaflet-touch .leaflet-control-layers, .leaflet-touch .leaflet-bar {
+            border: 2px solid rgba(0,0,0,0.0);
+            background-clip: padding-box;
+        }
+    </style>
 </head>
 <body>
 <script src="static/scripts/bootstrap.bundle.min.js"></script>
@@ -445,6 +468,33 @@
     map.addLayer(drawnItems);
     map.addLayer(metroMarkersCluster);
 
+    L.drawLocal.draw.toolbar.actions.title = 'Отменить рисование';
+    L.drawLocal.draw.toolbar.actions.text = 'Отмена';
+    L.drawLocal.draw.toolbar.finish.title = 'Завершить рисование';
+    L.drawLocal.draw.toolbar.finish.text = 'Завершить';
+    L.drawLocal.draw.toolbar.undo.title = 'Удалить последнюю точку';
+    L.drawLocal.draw.toolbar.undo.text = 'Удалить последнюю точку';
+    L.drawLocal.draw.toolbar.buttons.polygon = 'Нарисовать объект строительства';
+    L.drawLocal.draw.handlers.polygon.tooltip.start = 'Щелкните, чтобы начать рисование объекта строительства.';
+    L.drawLocal.draw.handlers.polygon.tooltip.cont = 'Щелкните, чтобы продолжить рисование.';
+    L.drawLocal.draw.handlers.polygon.tooltip.end = 'Щелкните на первую точку, чтобы завершить.';
+    // Изменение текста кнопки для рисования полигона
+    L.drawLocal.draw.toolbar.buttons.polygon = 'Добавить объект застройки';
+
+
+    // Изменение текста для панели инструментов редактирования
+    L.drawLocal.edit.toolbar.actions.save.title = 'Сохранить изменения';
+    L.drawLocal.edit.toolbar.actions.save.text = 'Сохранить';
+    L.drawLocal.edit.toolbar.actions.cancel.title = 'Отменить редактирование';
+    L.drawLocal.edit.toolbar.actions.cancel.text = 'Отмена';
+    L.drawLocal.edit.toolbar.actions.clearAll.title = 'Очистить все слои';
+    L.drawLocal.edit.toolbar.actions.clearAll.text = 'Очистить всё';
+
+    // Изменение подсказок для редактирования
+    L.drawLocal.edit.handlers.edit.tooltip.text = 'Перетащите маркеры или вершины для изменения фигуры.';
+    L.drawLocal.edit.handlers.edit.tooltip.subtext = 'Щелкните отмена для сброса изменений.';
+    L.drawLocal.edit.handlers.remove.tooltip.text = 'Щелкните на фигуру, чтобы удалить.';
+
     var drawControl = new L.Control.Draw({
         edit: {
             featureGroup: drawnItems
@@ -470,9 +520,9 @@
         var polygonData = {
             name: "ЖК Настоящее",
             commercialArea: 214000,
-            commercialAreaK: 25,
+            commercialAreaK: 35,
             residentialArea: 190000,
-            residentialAreaK: 35,
+            residentialAreaK: 25,
             loadConstants: {
                 workK: 0.57,
                 //modalSplitCar: 0.3,
@@ -509,13 +559,13 @@
                 <div class="form-group">
                     <label for="commercialArea">Коммерческая площадь (м²):</label>
                     <input id="commercialArea" min="0" type="number" class="form-control" value="${data.commercialArea}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialArea', this.value)" ${data.calculated ? 'disabled' : ''} />
-                    <label for="commercialAreaK">Площадь на человека (м²):</label>
+                    <label for="commercialAreaK">Коммерческая площадь на человека (м²):</label>
                     <input id="commercialAreaK" min="1" type="number" class="form-control" value="${data.commercialAreaK}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialAreaK', this.value)" ${data.calculated ? 'disabled' : ''} />
                 </div>
                 <div class="form-group">
                     <label for="residentialArea">Жилая площадь (м²):</label>
                     <input id="residentialArea" min="0" type="number" class="form-control" value="${data.residentialArea}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentialArea', this.value)" ${data.calculated ? 'disabled' : ''} />
-                    <label for="residentialAreaK">Площадь на человека (м²):</label>
+                    <label for="residentialAreaK">Жилая площадь на человека (м²):</label>
                     <input id="residentialAreaK" min="1" type="number" class="form-control" value="${data.residentialAreaK}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentialAreaK', this.value)" ${data.calculated ? 'disabled' : ''} />
                 </div>
                 <div class="form-group">
@@ -563,11 +613,11 @@
     function createLoadConstantInputs(layer, data) {
         return `
             <div class="form-group">
-                <label for="workK_${layer._leaflet_id}">Коэффициент занятости (workK):</label>
+                <label for="workK_${layer._leaflet_id}">Коэффициент занятости населения:</label>
                 <input type="number" min="0.01" max="1.00" step="0.01" class="form-control" id="workK_${layer._leaflet_id}" value="${data.loadConstants.workK}" onchange="updatePolygonData('${layer._leaflet_id}', 'workK', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
             <div class="form-group">
-                <label for="modalSplitMetro_${layer._leaflet_id}">Модальный сплит коэфф ОТ:</label>
+                <label for="modalSplitMetro_${layer._leaflet_id}">Модальный сплит - коэфф ОТ:</label>
                 <input type="number" min="0.01" max="1.00" step="0.01" class="form-control" id="modalSplitMetro_${layer._leaflet_id}" value="${data.loadConstants.modalSplitMetro}" onchange="updatePolygonData('${layer._leaflet_id}', 'modalSplitMetro', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
             <div class="form-group">
@@ -583,7 +633,7 @@
                 <input type="number" min="0.01" step="0.01" class="form-control" id="residentalPeakK_${layer._leaflet_id}" value="${data.loadConstants.residentalPeakK}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentalPeakK', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
             <div class="form-group">
-                <label for="residentalPeakK_${layer._leaflet_id}">Коэфф трафика в центр:</label>
+                <label for="residentalPeakK_${layer._leaflet_id}">Коэфф трафика в центр (для жилой площади) или к объекту (для коммерческой площади):</label>
                 <input type="number" min="0.01" max="1.00" step="0.01" class="form-control" id="residentalPeakK_${layer._leaflet_id}" value="${data.loadConstants.directionCenterK}" onchange="updatePolygonData('${layer._leaflet_id}', 'directionCenterK', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
         `;
@@ -813,7 +863,7 @@
                     </button>
                 </div>
             </div>
-            <p>Дополнительный поток: ${trafficData.additionalLoad} чел/час</p>
+            <p>Дополнительный спрос: ${trafficData.additionalLoad} чел/час</p>
             <p>
                 ${(trafficData.currentPassengerFlow + trafficData.additionalLoad) > trafficData.capacityPerHour
             ? 'Дефицит: ' + ((trafficData.currentPassengerFlow + trafficData.additionalLoad) - trafficData.capacityPerHour).toFixed(0)
@@ -949,17 +999,23 @@
 
             startCoords = [polygonCenter.lat, polygonCenter.lng];
             cityCoords = await getNearestCityCenter([polygonCenter.lat, polygonCenter.lng]);
-            let temp = startCoords;
-            startCoords = cityCoords; // центр
-            cityCoords = temp; //дом
+            if (time === '8:00') {
+                let temp = startCoords;
+                startCoords = cityCoords; // центр
+                cityCoords = temp; //дом
+            }
+
 
             let responseToCityCommercial = await axios.get(`http://79.174.95.72:5000/route/v1/driving/${startCoords[1]},${startCoords[0]};${cityCoords[1]},${cityCoords[0]}?overview=false&alternatives=true&steps=false&annotations=true`);
             let additionalLoadToCityCommercial = calculateLoad(layerId, 'car', 'center')[0] / responseToCityCommercial.data.routes.length;
 
             oppositePoint = calculateOppositePoint([polygonCenter.lat, polygonCenter.lng], cityCoords, 10);
-            temp = cityCoords;
-            startCoords = oppositePoint;
-            oppositePoint = temp;
+            if (time === '8:00') {
+                let temp = cityCoords;
+                startCoords = oppositePoint;
+                oppositePoint = temp;
+            }
+
 
             let responseOppositeCommercial = await axios.get(`http://79.174.95.72:5000/route/v1/driving/${startCoords[1]},${startCoords[0]};${oppositePoint[1]},${oppositePoint[0]}?overview=false&alternatives=true&steps=false&annotations=true`);
             let additionalLoadOppositCommercial = calculateLoad(layerId, 'car', 'out')[0] / responseOppositeCommercial.data.routes.length;
@@ -1339,7 +1395,7 @@
                 <input class="form-control" type="number" min="1" id="lanesInput_${segment.id}" value="${segment.lanes}" onchange="updateSegmentLanes('${segment.id}', this.value)" />
             </div>
             <div class="form-group">
-                <label for="vehiclesPerHour_${segment.id}">Текущая загрузка (ТС/час):</label>
+                <label for="vehiclesPerHour_${segment.id}">Начальная интенсивность (ТС/час):</label>
                 <div style="display: flex; align-items: center;">
                     <input class="form-control" min="0" type="number" id="vehiclesPerHour_${segment.id}" value="${segment.trafficData.vehiclesPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
                     <button class="btn btn-link" onclick="toggleSegmentEdit('${segment.id}', event)">
@@ -1356,7 +1412,7 @@
                     </button>
                 </div>
             </div>
-            <p>Дополнительная загрузка: ${segment.trafficData.additionalLoad.toFixed(0)} ТС/час</p>
+            <p>Дополнительный спрос: ${segment.trafficData.additionalLoad.toFixed(0)} ТС/час</p>
             <p>
             ${segment.trafficData.vehiclesPerHour + segment.trafficData.additionalLoad > segment.trafficData.capacityPerHour
             ? 'Дефицит: ' + ((segment.trafficData.vehiclesPerHour + segment.trafficData.additionalLoad) - segment.trafficData.capacityPerHour).toFixed(0)
@@ -1638,7 +1694,7 @@
             <h5>Сегмент пути</h5>
             <p>Имя: ${segment.name || 'Без названия'}</p>
             <div class="form-group">
-                <label for="vehiclesPerHour_${segment.id}">Текущая загрузка (ТС/час):</label>
+                <label for="vehiclesPerHour_${segment.id}">Начальная интенсивность (ТС/час):</label>
                 <div style="display: flex; align-items: center;">
                     <input class="form-control" min="0" type="number" id="vehiclesPerHour_${segment.id}" value="${segment.trafficData.vehiclesPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
                     <button class="btn btn-link" onclick="toggleOtherSegmentEdit('${segment.id}', event)">
@@ -1740,7 +1796,10 @@
     }
 
     function onTimeSliderChange() {
-        showTimeSliderLoader();
+        if (Object.keys(polygonDataMap) > 0) {
+            showTimeSliderLoader();
+        }
+
         clearMapExceptPolygons();
 
         segmentsFG.clearLayers();
