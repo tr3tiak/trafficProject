@@ -4,7 +4,7 @@
 
 находится в корне проекта или по ссылке https://docs.google.com/presentation/d/1EVFxfm3JN7_ivJu2RhgNNXNJDwXi2W_tDIyM43VJlkc/edit?usp=sharing. 
 
-### Видео демонстрацию
+### Видео демонстрация
 Доступна по ссылкам:
 
 https://vk.com/video173764727_456239338?list=ln-fPtqTAgXiaUvl1YDWR
