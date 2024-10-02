@@ -2,6 +2,12 @@
 <html lang="ru">
 <head>
     <style>
+        #timeSliderLoader {
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
         .traffic-raw-icon {
             position: relative;
             pointer-events: auto;
@@ -402,6 +408,9 @@
 <!-- Слайдер времени -->
 <div id="timeSlider">
     <input type="range" min="0" max="1" value="0" step="1" class="form-control-range">
+    <div id="timeSliderLoader" style="display: none;">
+        <div class="loader"></div>
+    </div>
     <div class="time-labels">
         <span>8:00</span>
         <span>18:00</span>
@@ -417,28 +426,25 @@
 </div>
 
 
+
 <!-- Ваши остальные скрипты -->
 <script>
-    var radiusCircles = {}; // Хранение кругов радиусов
+    var radiusCircles = {};
     var metroMarkersCluster = L.markerClusterGroup();
     var allRoadsMarkersCluster = L.markerClusterGroup();
+    var otherSegmentsMap = {};
 
-    // Инициализация карты ,
     var map = L.map('map', {attributionControl: false}).setView([55.74775242338863, 37.680696845054634], 17);
 
-    // Добавление базового слоя карты
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        // attribution: '&copy; OpenStreetMap contributors'
         maxNativeZoom: 19,
         maxZoom: 25
     }).addTo(map);
 
-    // Инициализация FeatureGroup для хранения полигонов и полилиний
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
     map.addLayer(metroMarkersCluster);
 
-    // Добавление панели инструментов для рисования
     var drawControl = new L.Control.Draw({
         edit: {
             featureGroup: drawnItems
@@ -453,16 +459,14 @@
     });
     map.addControl(drawControl);
 
-    // Массив для хранения сегментов путей
     var waySegmentsMap = {};
-    var selectedPolyline = null; // Хранит выделенную линию для изменения стиля
+    var selectedPolyline = null;
+    var popupLayer = null;
 
-    // Обработчик создания полигона
     map.on(L.Draw.Event.CREATED, function (event) {
         var layer = event.layer;
         drawnItems.addLayer(layer);
 
-        // Данные для каждого полигона
         var polygonData = {
             name: "ЖК Настоящее",
             commercialArea: 214000,
@@ -479,14 +483,13 @@
                 directionCenterK: 0.8,
                 directionOutK: 0.2
             },
-            calculated: false, // Флаг, рассчитана ли нагрузка
-            roadRadius: 2500,  // Радиус расчета дорог
-            metroRadius: 1500  // Радиус поиска метро и МЦД
+            calculated: false,
+            roadRadius: 2500,
+            metroRadius: 1500
         };
 
         polygonDataMap[layer._leaflet_id] = polygonData;
 
-        // Добавляем логику для попапов
         layer.bindPopup(createNewDevelopmentPopupContent(layer, polygonData)).openPopup();
         zoomToNewDevelopment(layer);
     });
@@ -494,7 +497,7 @@
     function zoomToNewDevelopment(layer) {
         map.flyTo(layer.getBounds().getCenter(), 14, {
             animate: true,
-            duration: 0.5 // Длительность анимации в секундах
+            duration: 0.5
         });
     }
 
@@ -660,14 +663,23 @@
 
     function calculateAll(layerId) {
         let layer = drawnItems.getLayer(layerId);
-        document.getElementById(`routeBtn_${layerId}`).disabled = true;
-        document.getElementById(`loader_${layerId}`).style.display = 'block';
+        let btn = document.getElementById(`routeBtn_${layerId}`);
+        if (btn) {
+            btn.disabled = true;
+        }
+        let loader =  document.getElementById(`loader_${layerId}`);
+        if (loader) {
+            loader.style.display = 'block';
+        }
 
         calculateRoute(layerId).then(() => {
             calculateMetros(layerId).then(() => {
                 polygonDataMap[layerId].calculated = true;
                 layer.getPopup().setContent(createNewDevelopmentPopupContent(layer, polygonDataMap[layerId]));
-                document.getElementById(`loader_${layerId}`).style.display = 'none';
+                let loader = document.getElementById(`loader_${layerId}`);
+                if (loader) {
+                    document.getElementById(`loader_${layerId}`).style.display = 'none';
+                }
             });
         });
     }
@@ -677,13 +689,11 @@
         let data = polygonDataMap[layerId];
         const polygonCenter = polygonLayer.getBounds().getCenter();
 
-        // Calculate the additional load for metros (both towards the center and out)
         let additionalLoadCenter = calculateLoad(layerId, 'metro', 'center');
         let additionalLoadOut = calculateLoad(layerId, 'metro', 'out');
         let totalAdditionalLoad = additionalLoadCenter + additionalLoadOut;
 
         let radius = data.metroRadius;
-        // Overpass query to fetch metro and MCD stations
         const overpassQuery = `
         [out:json];
         (
@@ -694,16 +704,13 @@
     `;
 
         try {
-            // Fetch metro and MCD stations
             const response = await axios.post('https://overpass-api.de/api/interpreter', overpassQuery, {
                 headers: {'Content-Type': 'text/plain'}
             });
 
             const reachableStations = response.data.elements;
 
-            // Calculate total current passenger flow for all reachable stations
-            //todo: check
-            const totalPassengerFlow = reachableStations.reduce((total, station) => total + 500, 0);  // Assume 500 passengers per hour for all stations
+            const totalPassengerFlow = reachableStations.reduce((total, station) => total + 500, 0);
 
             let nodeIds = [];
             reachableStations.forEach(station => {
@@ -711,43 +718,28 @@
             });
             let metroFlowData = await getMetroData(nodeIds);
 
-            // Distribute additional load proportionally
             reachableStations.forEach(station => {
                 let stationKey = station.id;
 
-                const currentPassengerFlow = metroFlowData[stationKey] ? metroFlowData[stationKey].flow : 500; // Assume 500 passengers per station
+                const currentPassengerFlow = metroFlowData[stationKey] ? metroFlowData[stationKey].flow : 500;
                 const capacityPerHour = metroFlowData[stationKey] ? metroFlowData[stationKey].bandwidth : 1000;
                 const stationAdditionalLoad = (currentPassengerFlow / totalPassengerFlow) * totalAdditionalLoad;
 
                 if (stationDataMap[stationKey]) {
-                    // Если станция уже есть, увеличиваем дополнительную нагрузку
                     stationDataMap[stationKey].trafficData.additionalLoad += Math.round(stationAdditionalLoad);
-                    // Обновляем попап
-                    stationDataMap[stationKey].marker.getPopup().setContent(`
-                        <h5>Станция метро/МЦД</h5>
-                        <p>Текущая пассажиропоток: ${stationDataMap[stationKey].trafficData.currentPassengerFlow} чел/час</p>
-                        <p>Пропускная способность: ${stationDataMap[stationKey].trafficData.capacityPerHour} чел/час</p>
-                        <p>Дополнительный поток: ${stationDataMap[stationKey].trafficData.additionalLoad} чел/час</p>
-                    `);
+                    stationDataMap[stationKey].marker.getPopup().setContent(getMetroPopupContent(stationKey));
                 } else {
                     let customIcon = L.icon({
-                        iconUrl: 'metro.png', // Укажите путь к вашему изображению PNG
-                        iconSize: [48, 48], // Размер изображения 48x48 пикселей
-                        iconAnchor: [24, 48], // Точка привязки (середина снизу)
-                        popupAnchor: [0, -48] // Точка привязки для всплывающего окна
+                        iconUrl: 'static/css/metro.png',
+                        iconSize: [48, 48],
+                        iconAnchor: [24, 48],
+                        popupAnchor: [0, -48]
                     });
 
-                    // Создаем новую запись для станции
-                    let marker = L.marker([station.lat, station.lon], {icon: customIcon}).bindPopup(`
-                        <h5>Станция метро/МЦД</h5>
-                        <p>Текущая пассажиропоток: ${currentPassengerFlow} чел/час</p>
-                        <p>Пропускная способность: ${capacityPerHour} чел/час</p>
-                        <p>Дополнительный поток: ${Math.round(stationAdditionalLoad)} чел/час</p>
-                    `);
 
-                    metroMarkersCluster.addLayer(marker);
 
-                    // Добавляем маркер на карту
+                    let marker = L.marker([station.lat, station.lon], {icon: customIcon});
+
                     stationDataMap[stationKey] = {
                         marker: marker,
                         trafficData: {
@@ -755,13 +747,107 @@
                             capacityPerHour: capacityPerHour,
                             additionalLoad: Math.floor(stationAdditionalLoad),
                         },
+                        isEditable: false
                     };
+
+                    marker.bindPopup(getMetroPopupContent(stationKey))
+
+                    metroMarkersCluster.addLayer(marker);
                 }
             });
+
+            map.addLayer(metroMarkersCluster);
         } catch (error) {
             console.error('Ошибка при запросе данных:', error);
             throw new Error('Не удалось получить станции метро и МЦД');
         }
+    }
+
+    function getIconLock(isEditable) {
+        return isEditable
+            ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M11 1a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5V3a3 3 0 0 1 6 0v4a.5.5 0 0 1-1 0V3a2 2 0 0 0-2-2"/>
+                   </svg>`
+            : `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/>
+                   </svg>`;
+    }
+    function getMetroPopupContent(stationKey) {
+        const stationData = stationDataMap[stationKey];
+        const trafficData = stationData.trafficData;
+        const isEditable = stationData.isEditable || false;
+
+        return `
+            <h5>Станция метро/МЦД</h5>
+            <div class="form-group">
+                <label for="currentPassengerFlow_${stationKey}">Текущий пассажиропоток:</label>
+                <div style="display: flex; align-items: center;">
+                    <input class="form-control" type="number" id="currentPassengerFlow_${stationKey}" value="${trafficData.currentPassengerFlow}" ${isEditable ? '' : 'disabled'} />
+                    <button class="btn btn-link" onclick="toggleMetroEdit('${stationKey}', event)">
+                       ${getIconLock(isEditable)}
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="capacityPerHour_${stationKey}">Пропускная способность:</label>
+                <div style="display: flex; align-items: center;">
+                    <input class="form-control" type="number" id="capacityPerHour_${stationKey}" value="${trafficData.capacityPerHour}" ${isEditable ? '' : 'disabled'} />
+                    <button class="btn btn-link" onclick="toggleMetroEdit('${stationKey}', event)">
+                         ${getIconLock(isEditable)}
+                    </button>
+                </div>
+            </div>
+            <p>Дополнительный поток: ${trafficData.additionalLoad} чел/час</p>
+            <p>
+                ${(trafficData.currentPassengerFlow + trafficData.additionalLoad) > trafficData.capacityPerHour
+            ? 'Дефицит: ' + ((trafficData.currentPassengerFlow + trafficData.additionalLoad) - trafficData.capacityPerHour).toFixed(0)
+            : 'Запас: ' + (trafficData.capacityPerHour - (trafficData.currentPassengerFlow + trafficData.additionalLoad)).toFixed(0)}
+            </p>
+            <button class="btn btn-primary" onclick="saveMetroData('${stationKey}')" ${isEditable ? '' : 'disabled'}>Сохранить</button>
+        `;
+    }
+
+    function toggleMetroEdit(stationKey, event) {
+        event.stopPropagation();
+        const stationData = stationDataMap[stationKey];
+        stationData.isEditable = !stationData.isEditable;
+
+        stationData.marker.getPopup().setContent(getMetroPopupContent(stationKey));
+    }
+
+    function saveMetroData(stationKey) {
+        const stationData = stationDataMap[stationKey];
+        const trafficData = stationData.trafficData;
+
+        const currentPassengerFlowInput = document.getElementById(`currentPassengerFlow_${stationKey}`);
+        const capacityPerHourInput = document.getElementById(`capacityPerHour_${stationKey}`);
+
+        trafficData.currentPassengerFlow = parseFloat(currentPassengerFlowInput.value);
+        trafficData.capacityPerHour = parseFloat(capacityPerHourInput.value);
+
+        const time = getCurrentTimeFromSlider();
+        const dataToSend = {
+            elements: [
+                {
+                    id: stationKey,
+                    bandwidth: trafficData.capacityPerHour / 1000,
+                    flow: {
+                        [time]: trafficData.currentPassengerFlow / 1000
+                    }
+                }
+            ]
+        };
+
+        axios.post('http://79.174.95.72:8001/update-metro', dataToSend)
+            .then(response => {
+                alert('Данные успешно сохранены');
+                stationData.isEditable = false;
+                stationData.marker.getPopup().setContent(getMetroPopupContent(stationKey));
+            })
+            .catch(error => {
+                console.error('Ошибка при сохранении данных:', error);
+                alert('Ошибка при сохранении данных');
+            });
     }
 
     // Функция расчета маршрута
@@ -769,25 +855,32 @@
         let polygonLayer = drawnItems.getLayer(layerId);
         let data = polygonDataMap[layerId];
         const polygonCenter = polygonLayer.getBounds().getCenter();
-        const startCoords = [polygonCenter.lat, polygonCenter.lng];
+        let startCoords = [polygonCenter.lat, polygonCenter.lng];
 
         try {
-            // Get the nearest city center
             let cityCoords = await getNearestCityCenter([polygonCenter.lat, polygonCenter.lng]);
+            const time = getCurrentTimeFromSlider();
 
-            // Build route towards the city center
+            if (time === '18:00') {
+                let temp = startCoords;
+                startCoords = cityCoords; // центр
+                cityCoords = temp; //дом
+            }
+
             let responseToCity = await axios.get(`http://79.174.95.72:5000/route/v1/driving/${startCoords[1]},${startCoords[0]};${cityCoords[1]},${cityCoords[0]}?overview=false&alternatives=true&steps=false&annotations=true`);
             let additionalLoadToCity = calculateLoad(layerId, 'car', 'center') / responseToCity.data.routes.length;
 
-            // Build route in opposite direction, 10 km away
-            let oppositePoint = calculateOppositePoint([polygonCenter.lat, polygonCenter.lng], cityCoords, 10); // 10 km
+            let oppositePoint = calculateOppositePoint([polygonCenter.lat, polygonCenter.lng], cityCoords, 10);
+            if (time === '18:00') {
+                let temp = cityCoords;
+                startCoords = oppositePoint;
+                oppositePoint = temp;
+            }
             let responseOpposite = await axios.get(`http://79.174.95.72:5000/route/v1/driving/${startCoords[1]},${startCoords[0]};${oppositePoint[1]},${oppositePoint[0]}?overview=false&alternatives=true&steps=false&annotations=true`);
             let additionalLoadOpposite = calculateLoad(layerId, 'car', 'out') / responseOpposite.data.routes.length;
 
-            // Process both routes
             let allWayIds = [];
 
-            // Process routes towards city
             for (let route of responseToCity.data.routes) {
                 const nodesLeg = route.legs[0].annotation.nodes;
                 const wayIds = await getWayIdsByNodes(nodesLeg, [polygonCenter.lat, polygonCenter.lng], data.roadRadius);
@@ -795,7 +888,6 @@
                 await processRouteSegments(wayIds, nodesLeg, polygonCenter, data, additionalLoadToCity);
             }
 
-            // Process routes in opposite direction
             for (let route of responseOpposite.data.routes) {
                 const nodesLeg = route.legs[0].annotation.nodes;
                 const wayIds = await getWayIdsByNodes(nodesLeg, [polygonCenter.lat, polygonCenter.lng], data.roadRadius);
@@ -803,19 +895,24 @@
                 await processRouteSegments(wayIds, nodesLeg, polygonCenter, data, additionalLoadOpposite);
             }
 
-            // Get way data for all way ids
             const wayDataMap = await getWayData(allWayIds);
             for (let wayDataMapKey in wayDataMap) {
                 const wayInfo = wayDataMap[wayDataMapKey];
                 waySegmentsMap[wayDataMapKey].trafficData.vehiclesPerHour = wayInfo ? wayInfo.flow : 0;
-                waySegmentsMap[wayDataMapKey].trafficData.capacityPerHour = wayInfo ? wayInfo.bandwidth : waySegmentsMap[wayDataMapKey].lanes*500;
+                waySegmentsMap[wayDataMapKey].trafficData.capacityPerHour = wayInfo ? wayInfo.bandwidth : waySegmentsMap[wayDataMapKey].lanes * 500;
             }
 
-            // Очищаем слои, если они есть
+            // Remove markers from otherSegmentsMap if they exist in the route
+            allWayIds.forEach(wayId => {
+                if (otherSegmentsMap[wayId]) {
+                    allRoadsMarkersCluster.removeLayer(otherSegmentsMap[wayId].marker);
+                    delete otherSegmentsMap[wayId];
+                }
+            });
+
             segmentsFG.clearLayers();
             segmentMarkersCluster.clearLayers();
 
-            // Рисуем обновленные сегменты
             drawWaySegments(waySegmentsMap);
 
         } catch (error) {
@@ -952,39 +1049,6 @@
         return degrees * Math.PI / 180;
     }
 
-
-
-/*    function getNearestCityCenter(coords) {
-        return axios.get('https://nominatim.openstreetmap.org/reverse', {
-            params: {
-                lat: coords[0],
-                lon: coords[1],
-                format: 'json',
-                addressdetails: 1,
-                zoom: 16
-            }
-        }).then(response => {
-            const city = response.data.address.city || response.data.address.town || response.data.address.village;
-            if (city) {
-                // Now get the center coordinates of the city
-                return axios.get('https://nominatim.openstreetmap.org/search', {
-                    params: {
-                        q: city,
-                        format: 'json',
-                        limit: 1
-                    }
-                }).then(searchResponse => {
-                    if (searchResponse.data.length > 0) {
-                        return [parseFloat(searchResponse.data[0].lat), parseFloat(searchResponse.data[0].lon)];
-                    } else {
-                        throw new Error('City center not found');
-                    }
-                });
-            } else {
-                throw new Error('City not found in address');
-            }
-        });
-    }*/
     function getLoadPointsAndColor(segment) {
         let loadPointsBefore = ((segment.trafficData.vehiclesPerHour) / segment.trafficData.capacityPerHour) * 10;
         let loadPoints = ((segment.trafficData.vehiclesPerHour + segment.trafficData.additionalLoad) / segment.trafficData.capacityPerHour) * 10;
@@ -1027,10 +1091,8 @@
                 weight: 8
             });
 
-            // Сохраняем ссылку на полилинию
             segment.polyline = polyline;
 
-            // Create the arrow decorator
             if (segment.oneway) {
                 const arrowHead = L.polylineDecorator(polyline, {
                     patterns: [
@@ -1052,8 +1114,6 @@
                 segmentsFG.addLayer(arrowHead);
             }
 
-            segmentsFG.addLayer(polyline);
-
             function getCenterCoords(geometry) {
                 let latSum = 0;
                 let lonSum = 0;
@@ -1069,7 +1129,6 @@
                 return [centerLat, centerLon];
             }
 
-            // Отображаем информацию о загруженности рядом с сегментом
             const centerCoords = getCenterCoords(segment.geometry);
             const marker = L.marker(centerCoords, {
                 icon: L.divIcon({
@@ -1078,19 +1137,18 @@
                 })
             });
 
-            // Добавляем маркер в кластер
-            segmentMarkersCluster.addLayer(marker);
+            segment.marker = marker;
 
             marker.on('click', function () {
                 handleSegmentClick(segment, polyline);
             });
 
-            // Обработчик клика по полилинии
             polyline.on('click', function () {
                 handleSegmentClick(segment, polyline);
             });
 
             segmentsFG.addLayer(polyline);
+            segmentMarkersCluster.addLayer(marker);
         }
         map.addLayer(segmentsFG);
         map.addLayer(segmentMarkersCluster);
@@ -1155,37 +1213,62 @@
 
     // Обработка клика по сегменту
     function handleSegmentClick(segment, polyline) {
-        // Если существует выделенная линия, сбрасываем её ширину
         if (selectedPolyline) {
             selectedPolyline.setStyle({weight: 8});
         }
 
-        // Увеличиваем ширину выбранного сегмента
         polyline.setStyle({weight: 16});
-        selectedPolyline = polyline; // Сохраняем ссылку на выбранную линию
+        selectedPolyline = polyline;
 
-        // Отображаем дополнительную информацию в попапе
         const segmentCoords = segment.geometry[Math.floor(segment.geometry.length / 2)];
         popupLayer = L.popup()
             .setLatLng(segmentCoords)
-            .setContent(`
-                <h5>Сегмент пути</h5>
-                <p>Имя: ${segment.name || 'Без названия'}</p>
-                <div class="form-group">
-                    <label for="lanesInput_${segment.id}">Количество полос:</label>
-                    <input class="form-control" type="number" id="lanesInput_${segment.id}" value="${segment.lanes}" onchange="updateSegmentLanes('${segment.id}', this.value)" />
-                </div>
-                <p>Текущая загрузка: ${segment.trafficData.vehiclesPerHour.toFixed(0)} ТС/час</p>
-                <p>Дополнительная загрузка: ${segment.trafficData.additionalLoad.toFixed(0)} ТС/час</p>
-                <p>Пропускная способность: ${segment.trafficData.capacityPerHour.toFixed(0)} ТС/час</p>
-            `);
+            .setContent(getSegmentPopupContent(segment))
+            .openOn(map);
 
         map.on('popupclose', function () {
             if (selectedPolyline) {
                 selectedPolyline.setStyle({weight: 8});
             }
         });
-        map.addLayer(popupLayer);
+    }
+
+    function getSegmentPopupContent(segment) {
+        const isEditable = segment.isEditable || false;
+
+        return `
+            <h5>Сегмент пути</h5>
+            <p>Имя: ${segment.name || 'Без названия'}</p>
+            <div class="form-group">
+                <label for="lanesInput_${segment.id}">Количество полос:</label>
+                <input class="form-control" type="number" id="lanesInput_${segment.id}" value="${segment.lanes}" onchange="updateSegmentLanes('${segment.id}', this.value)" />
+            </div>
+            <div class="form-group">
+                <label for="vehiclesPerHour_${segment.id}">Текущая загрузка (ТС/час):</label>
+                <div style="display: flex; align-items: center;">
+                    <input class="form-control" type="number" id="vehiclesPerHour_${segment.id}" value="${segment.trafficData.vehiclesPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
+                    <button class="btn btn-link" onclick="toggleSegmentEdit('${segment.id}', event)">
+                        ${getIconLock(isEditable)}
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="capacityPerHour_${segment.id}">Пропускная способность (ТС/час):</label>
+                <div style="display: flex; align-items: center;">
+                    <input class="form-control" type="number" id="capacityPerHour_${segment.id}" value="${segment.trafficData.capacityPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
+                    <button class="btn btn-link" onclick="toggleSegmentEdit('${segment.id}', event)">
+                        ${getIconLock(isEditable)}
+                    </button>
+                </div>
+            </div>
+            <p>Дополнительная загрузка: ${segment.trafficData.additionalLoad.toFixed(0)} ТС/час</p>
+            <p>
+            ${segment.trafficData.vehiclesPerHour + segment.trafficData.additionalLoad > segment.trafficData.capacityPerHour
+            ? 'Дефицит: ' + ((segment.trafficData.vehiclesPerHour + segment.trafficData.additionalLoad) - segment.trafficData.capacityPerHour).toFixed(0)
+            : 'Запас: ' + (segment.trafficData.capacityPerHour - (segment.trafficData.vehiclesPerHour + segment.trafficData.additionalLoad)).toFixed(0)}
+            </p>
+            <button class="btn btn-primary" onclick="saveSegmentData('${segment.id}')" ${isEditable ? '' : 'disabled'}>Сохранить</button>
+        `;
     }
 
     function updateSegmentLanes(segmentId, newLanes) {
@@ -1194,70 +1277,108 @@
         newLanes = parseFloat(newLanes);
         segment.lanes = newLanes;
 
-        // Update capacityPerHour proportionally
         segment.trafficData.capacityPerHour *= (newLanes / oldLanes);
 
-        // Update the color of the segment
         updateSegmentStyle(segmentId);
 
-        // Refresh the popup content
-        if (selectedPolyline) {
-            handleSegmentClick(segment, selectedPolyline);
+        if (popupLayer && popupLayer.isOpen()) {
+            popupLayer.setContent(getSegmentPopupContent(segment));
         }
+    }
+
+    function toggleSegmentEdit(segmentId, event) {
+        event.stopPropagation();
+        let segment = waySegmentsMap[segmentId];
+        segment.isEditable = !segment.isEditable;
+
+        if (popupLayer && popupLayer.isOpen()) {
+            popupLayer.setContent(getSegmentPopupContent(segment));
+        }
+    }
+
+    function saveSegmentData(segmentId) {
+        let segment = waySegmentsMap[segmentId];
+
+        const vehiclesPerHourInput = document.getElementById(`vehiclesPerHour_${segmentId}`);
+        const capacityPerHourInput = document.getElementById(`capacityPerHour_${segmentId}`);
+
+        segment.trafficData.vehiclesPerHour = parseFloat(vehiclesPerHourInput.value);
+        segment.trafficData.capacityPerHour = parseFloat(capacityPerHourInput.value);
+
+        const time = getCurrentTimeFromSlider();
+        const dataToSend = {
+            elements: [
+                {
+                    id: segmentId,
+                    bandwidth: segment.trafficData.capacityPerHour,
+                    flow: {
+                        [time]: segment.trafficData.vehiclesPerHour
+                    }
+                }
+            ]
+        };
+
+        axios.post('http://79.174.95.72:8001/update-ways', dataToSend)
+            .then(response => {
+                alert('Данные успешно сохранены');
+                segment.isEditable = false;
+                if (popupLayer && popupLayer.isOpen()) {
+                    popupLayer.setContent(getSegmentPopupContent(segment));
+                }
+                updateSegmentStyle(segmentId);
+            })
+            .catch(error => {
+                console.error('Ошибка при сохранении данных:', error);
+                alert('Ошибка при сохранении данных');
+            });
     }
 
     function updateSegmentStyle(segmentId) {
         let segment = waySegmentsMap[segmentId];
-        const percentage = ((segment.trafficData.vehiclesPerHour + segment.trafficData.additionalLoad) / segment.trafficData.capacityPerHour) * 100;
-        let color;
+        let lc = getLoadPointsAndColor(segment);
 
-        if (percentage < 50) {
-            color = 'green';
-        } else if (percentage < 80) {
-            color = 'orange';
-        } else {
-            color = 'red';
-        }
-
-        // Update the polyline style
         if (segment.polyline) {
-            segment.polyline.setStyle({color: color});
+            segment.polyline.setStyle({color: lc[1].c});
         }
+
+        segment.marker.setIcon(L.divIcon({
+            className: 'traffic-info',
+            html: getMarkerHtml(segment, lc)
+        }));
     }
 
     async function getWayData(wayIds) {
+        const time = getCurrentTimeFromSlider();
         try {
             const response = await axios.post('http://79.174.95.72:8001/ways', {
                 id: wayIds,
-                time: "8:00",
+                time: time,
             }, {
                 headers: {'Content-Type': 'application/json'}
             });
-
-            // Преобразуем массив в объект для
 
             const wayDataMap = {};
             response.data.ways_ids.forEach(way => {
                 wayDataMap[way.id] = way;
             });
 
-            return wayDataMap;  // Возвращаем объект
+            return wayDataMap;
         } catch (error) {
             console.error('Ошибка получения данных ways:', error);
-            return {};  // Возвращаем пустой объект, если запрос не удался
+            return {};
         }
     }
 
     async function getMetroData(nodeIds) {
+        const time = getCurrentTimeFromSlider();
         try {
             const response = await axios.post('http://79.174.95.72:8001/metro/', {
                 id: nodeIds,
-                time: "8:00",
+                time: time,
             }, {
                 headers: {'Content-Type': 'application/json'}
             });
 
-            // Преобразуем массив в объект для быстрого доступа по ID
             const metroDataMap = {};
             response.data.metro_ids.forEach(way => {
                 way.bandwidth *= 1000;
@@ -1265,10 +1386,10 @@
                 metroDataMap[way.id] = way;
             });
 
-            return metroDataMap;  // Возвращаем объект
+            return metroDataMap;
         } catch (error) {
             console.error('Ошибка получения данных ways:', error);
-            return {};  // Возвращаем пустой объект, если запрос не удался
+            return {};
         }
     }
 
@@ -1325,25 +1446,21 @@
     }
 
     function updateAllRoads() {
-        // Fetch the bbox
         var bbox = map.getBounds();
         var bboxString = `${bbox.getSouth()},${bbox.getWest()},${bbox.getNorth()},${bbox.getEast()}`;
-        // Fetch the ways within the bbox from Overpass API
-        // Build the Overpass QL query
+
         var overpassQuery = `
             [out:json];
               way["highway"]["highway"!="footway"]["highway"!="cycleway"]["highway"!="path"]["highway"!="steps"]["highway"!="service"]["highway"!="construction"](${bboxString});
             out geom;
         `;
 
-        // Send the request
         axios.post('https://overpass-api.de/api/interpreter', overpassQuery, {
             headers: {'Content-Type': 'text/plain'}
         }).then(response => {
             var ways = response.data.elements;
             var wayIds = ways.map(way => way.id);
 
-            // Get capacity and current load data from existing method
             getWayData(wayIds).then(wayDataMap => {
                 allRoadsMarkersCluster.clearLayers();
 
@@ -1352,22 +1469,10 @@
                     var geometry = way.geometry.map(point => [point.lat, point.lon]);
                     var wayInfo = wayDataMap[wayId];
 
-                    var lanes = parseInt(way.tags["lanes"]) || 0
+                    var lanes = parseInt(way.tags["lanes"]) || 1;
                     var vehiclesPerHour = wayInfo ? wayInfo.flow : 0;
                     var capacityPerHour = wayInfo ? wayInfo.bandwidth : (lanes * 500);
 
-                    const percentage = (vehiclesPerHour / capacityPerHour) * 100;
-                    let color;
-
-                    if (percentage < 50) {
-                        color = 'green';
-                    } else if (percentage < 80) {
-                        color = 'orange';
-                    } else {
-                        color = 'red';
-                    }
-
-                    // Add markers with current load only
                     function getCenterCoords(geometry) {
                         let latSum = 0;
                         let lonSum = 0;
@@ -1387,17 +1492,31 @@
                     const marker = L.marker(centerCoords, {
                         icon: L.divIcon({
                             className: 'traffic-info',
-                            html: `<div style="background: rgba(0,0,0,0.5); color: white; font-weight: 600; padding: 2px 5px; width: 100px; border-radius: 5px;">
+                            html: `<div style="background: rgba(0,0,0,0.3); color: white; font-weight: 600; padding: 2px 5px; width: 100px; border-radius: 5px;">
                                   ${vehiclesPerHour.toFixed(0)} ТС/час
                                </div>`
                         })
                     });
 
-                    allRoadsMarkersCluster.addLayer(marker);
+                    otherSegmentsMap[wayId] = {
+                        id: wayId,
+                        marker: marker,
+                        trafficData: {
+                            vehiclesPerHour: vehiclesPerHour,
+                            capacityPerHour: capacityPerHour
+                        },
+                        name: way.tags["name"],
+                        lanes: lanes,
+                        isEditable: false
+                    };
 
+                    marker.on('click', function () {
+                        handleOtherSegmentClick(otherSegmentsMap[wayId]);
+                    });
+
+                    allRoadsMarkersCluster.addLayer(marker);
                 });
 
-                // Add layers to map if not already adde
                 if (!map.hasLayer(allRoadsMarkersCluster)) {
                     map.addLayer(allRoadsMarkersCluster);
                 }
@@ -1407,6 +1526,89 @@
         }).catch(error => {
             console.error('Error fetching all roads:', error);
         });
+    }
+
+    function handleOtherSegmentClick(segment) {
+        const centerCoords = segment.marker.getLatLng();
+        popupLayer = L.popup()
+            .setLatLng(centerCoords)
+            .setContent(getOtherSegmentPopupContent(segment))
+            .openOn(map);
+    }
+
+    function getOtherSegmentPopupContent(segment) {
+        const isEditable = segment.isEditable || false;
+
+        return `
+            <h5>Сегмент пути</h5>
+            <p>Имя: ${segment.name || 'Без названия'}</p>
+            <div class="form-group">
+                <label for="vehiclesPerHour_${segment.id}">Текущая загрузка (ТС/час):</label>
+                <div style="display: flex; align-items: center;">
+                    <input class="form-control" type="number" id="vehiclesPerHour_${segment.id}" value="${segment.trafficData.vehiclesPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
+                    <button class="btn btn-link" onclick="toggleOtherSegmentEdit('${segment.id}', event)">
+                        ${getIconLock(isEditable)}
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="capacityPerHour_${segment.id}">Пропускная способность (ТС/час):</label>
+                <div style="display: flex; align-items: center;">
+                    <input class="form-control" type="number" id="capacityPerHour_${segment.id}" value="${segment.trafficData.capacityPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
+                    <button class="btn btn-link" onclick="toggleOtherSegmentEdit('${segment.id}', event)">
+                        ${getIconLock(isEditable)}
+                    </button>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveOtherSegmentData('${segment.id}')" ${isEditable ? '' : 'disabled'}>Сохранить</button>
+        `;
+    }
+
+    function toggleOtherSegmentEdit(segmentId, event) {
+        event.stopPropagation();
+        let segment = otherSegmentsMap[segmentId];
+        segment.isEditable = !segment.isEditable;
+
+        if (popupLayer && popupLayer.isOpen()) {
+            popupLayer.setContent(getOtherSegmentPopupContent(segment));
+            popupLayer.openOn(map)
+        }
+    }
+
+    function saveOtherSegmentData(segmentId) {
+        let segment = otherSegmentsMap[segmentId];
+
+        const vehiclesPerHourInput = document.getElementById(`vehiclesPerHour_${segmentId}`);
+        const capacityPerHourInput = document.getElementById(`capacityPerHour_${segmentId}`);
+
+        segment.trafficData.vehiclesPerHour = parseFloat(vehiclesPerHourInput.value);
+        segment.trafficData.capacityPerHour = parseFloat(capacityPerHourInput.value);
+
+        const time = getCurrentTimeFromSlider();
+        const dataToSend = {
+            elements: [
+                {
+                    id: segmentId,
+                    bandwidth: segment.trafficData.capacityPerHour,
+                    flow: {
+                        [time]: segment.trafficData.vehiclesPerHour
+                    }
+                }
+            ]
+        };
+
+        axios.post('http://79.174.95.72:8001/update-ways', dataToSend)
+            .then(response => {
+                alert('Данные успешно сохранены');
+                segment.isEditable = false;
+                if (popupLayer && popupLayer.isOpen()) {
+                    popupLayer.setContent(getOtherSegmentPopupContent(segment));
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при сохранении данных:', error);
+                alert('Ошибка при сохранении данных');
+            });
     }
 
     function debounce(func, wait) {
@@ -1423,6 +1625,60 @@
     }
 
     var debouncedUpdateAllRoads = debounce(updateAllRoads, 500);
+
+    // Time slider handling
+    const timeSlider = document.querySelector('#timeSlider input[type="range"]');
+    timeSlider.addEventListener('input', onTimeSliderChange);
+
+    function getCurrentTimeFromSlider() {
+        const value = parseInt(timeSlider.value);
+        if (value === 0) {
+            return '8:00';
+        } else if (value === 1) {
+            return '18:00';
+        }
+        return '8:00';
+    }
+
+    function onTimeSliderChange() {
+        showTimeSliderLoader();
+        clearMapExceptPolygons();
+
+        segmentsFG.clearLayers();
+        segmentMarkersCluster.clearLayers();
+
+        metroMarkersCluster.clearLayers();
+
+        waySegmentsMap = {};
+        stationDataMap = {};
+
+
+        let calculatePromises = [];
+        for (let layerId in polygonDataMap) {
+            calculatePromises.push(calculateAll(layerId));
+        }
+
+        Promise.all(calculatePromises).then(() => {
+            hideTimeSliderLoader();
+        });
+    }
+
+    function showTimeSliderLoader() {
+        document.getElementById('timeSliderLoader').style.display = 'inline-block';
+    }
+
+    function hideTimeSliderLoader() {
+        document.getElementById('timeSliderLoader').style.display = 'none';
+    }
+
+    function clearMapExceptPolygons() {
+        map.eachLayer(function (layer) {
+            if (layer !== drawnItems && !(layer instanceof L.TileLayer)) {
+                map.removeLayer(layer);
+            }
+        });
+        //map.addLayer(metroMarkersCluster);
+    }
 
 </script>
 </body>
