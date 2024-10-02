@@ -11,8 +11,7 @@ def add_bandwidth_field(filename):
         data = json.load(f)
 
     for item in data['elements']:
-        #print(item)
-        item["bandwidth"] = 300
+        item["bandwidth"] = 30
         item["flow"] = {
             "8:00": 8.4,
             "18:00": 5.6
