@@ -21,14 +21,14 @@ password = "DP5vR23y"
 # SQL-запрос для добавления строки
 sql_metro = """
 INSERT INTO metro (id, bandwidth)
-VALUES (%s, %s),
+VALUES (%s, %s)
 ON CONFLICT (id)
 DO UPDATE SET 
     bandwidth = EXCLUDED.bandwidth
 """
 sql_flow = """
 INSERT INTO flow_metro (metro_id, time, flow)
-VALUES (%s, %s, %s),
+VALUES (%s, %s, %s)
 ON CONFLICT (metro_id, time)
 DO UPDATE SET 
     flow = EXCLUDED.flow
