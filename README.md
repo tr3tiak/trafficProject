@@ -3,7 +3,9 @@
 **Презентация** находится в корне проекта. 
 
 **Видео демонстрацию** можно найти по ссылкам:
+
 https://vk.com/video173764727_456239338?list=ln-fPtqTAgXiaUvl1YDWR
+
 https://rutube.ru/video/private/9e19723b69f51352255dd85c391138a9/?p=c7Y4UnUGUmcTtGdWQwC9QQ
 
 ### Запуск проекта
