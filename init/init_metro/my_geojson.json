@@ -1,0 +1,42 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Новокузнецкая",
+                "bandwidth": 30,
+                "flow": {
+                    "8:00": 8.4,
+                    "18:00": 5.6
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    37.6292018,
+                    55.7414344
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Павелецкая",
+                "bandwidth": 30,
+                "flow": {
+                    "8:00": 8.4,
+                    "18:00": 5.6
+                }
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    37.6381483,
+                    55.7323172
+                     
+                ]
+            }
+        }
+    ]
+}
