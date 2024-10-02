@@ -20,14 +20,14 @@ password = "DP5vR23y"
 # SQL-запрос для добавления строки
 sql_ways = """
 INSERT INTO ways (id, bandwidth)
-VALUES (%s, %s),
+VALUES (%s, %s)
 ON CONFLICT (id)
 DO UPDATE SET 
     bandwidth = EXCLUDED.bandwidth
 """
 sql_flow = """
 INSERT INTO flow_ways (ways_id, time, flow)
-VALUES (%s, %s, %s),
+VALUES (%s, %s, %s)
 ON CONFLICT (ways_id, time)
 DO UPDATE SET 
     flow = EXCLUDED.flow
