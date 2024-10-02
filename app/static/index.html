@@ -475,7 +475,7 @@
             residentialAreaK: 35,
             loadConstants: {
                 workK: 0.57,
-                modalSplitCar: 0.3,
+                //modalSplitCar: 0.3,
                 modalSplitMetro: 0.7,
                 carK: 1.2,
                 commercialPeakK: 0.35,
@@ -508,23 +508,23 @@
                 <h5 class="text-primary">Параметры</h5>
                 <div class="form-group">
                     <label for="commercialArea">Коммерческая площадь (м²):</label>
-                    <input id="commercialArea" type="number" class="form-control" value="${data.commercialArea}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialArea', this.value)" ${data.calculated ? 'disabled' : ''} />
+                    <input id="commercialArea" min="0" type="number" class="form-control" value="${data.commercialArea}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialArea', this.value)" ${data.calculated ? 'disabled' : ''} />
                     <label for="commercialAreaK">Площадь на человека (м²):</label>
-                    <input id="commercialAreaK" type="number" class="form-control" value="${data.commercialAreaK}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialAreaK', this.value)" ${data.calculated ? 'disabled' : ''} />
+                    <input id="commercialAreaK" min="1" type="number" class="form-control" value="${data.commercialAreaK}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialAreaK', this.value)" ${data.calculated ? 'disabled' : ''} />
                 </div>
                 <div class="form-group">
                     <label for="residentialArea">Жилая площадь (м²):</label>
-                    <input id="residentialArea" type="number" class="form-control" value="${data.residentialArea}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentialArea', this.value)" ${data.calculated ? 'disabled' : ''} />
+                    <input id="residentialArea" min="0" type="number" class="form-control" value="${data.residentialArea}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentialArea', this.value)" ${data.calculated ? 'disabled' : ''} />
                     <label for="residentialAreaK">Площадь на человека (м²):</label>
-                    <input id="residentialAreaK" type="number" class="form-control" value="${data.residentialAreaK}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentialAreaK', this.value)" ${data.calculated ? 'disabled' : ''} />
+                    <input id="residentialAreaK" min="1" type="number" class="form-control" value="${data.residentialAreaK}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentialAreaK', this.value)" ${data.calculated ? 'disabled' : ''} />
                 </div>
                 <div class="form-group">
-                    <label style="color: blue" for="roadRadius_${layer._leaflet_id}">Радиус расчета дорог (м):</label>
-                    <input type="number" id="roadRadius_${layer._leaflet_id}" class="form-control" value="${data.roadRadius}" onchange="updatePolygonData('${layer._leaflet_id}', 'roadRadius', this.value)" ${data.calculated ? 'disabled' : ''} />
+                    <label style="color: blue"  for="roadRadius_${layer._leaflet_id}">Радиус расчета дорог (м):</label>
+                    <input type="number" min="1" id="roadRadius_${layer._leaflet_id}" class="form-control" value="${data.roadRadius}" onchange="updatePolygonData('${layer._leaflet_id}', 'roadRadius', this.value)" ${data.calculated ? 'disabled' : ''} />
                 </div>
                 <div class="form-group">
                     <label style="color: green" for="metroRadius_${layer._leaflet_id}">Радиус поиска метро и МЦД (м):</label>
-                    <input type="number" id="metroRadius_${layer._leaflet_id}" class="form-control" value="${data.metroRadius}" onchange="updatePolygonData('${layer._leaflet_id}', 'metroRadius', this.value)" ${data.calculated ? 'disabled' : ''} />
+                    <input type="number" min="1" id="metroRadius_${layer._leaflet_id}" class="form-control" value="${data.metroRadius}" onchange="updatePolygonData('${layer._leaflet_id}', 'metroRadius', this.value)" ${data.calculated ? 'disabled' : ''} />
                 </div>
 
                 <h6 class="text-primary">Дополнительные параметры</h6>
@@ -554,32 +554,37 @@
 
     // Хранение данных по каждому слою
     var polygonDataMap = {};
-
+/*
+            <div class="form-group">
+                <label for="modalSplitCar_${layer._leaflet_id}">Модальный сплит авто:</label>
+                <input type="number" min="0.01" step="0.01" class="form-control" id="modalSplitCar_${layer._leaflet_id}" value="${data.loadConstants.modalSplitCar}" onchange="updatePolygonData('${layer._leaflet_id}', 'modalSplitCar', this.value)" ${data.calculated ? 'disabled' : ''}>
+            </div>
+ */
     function createLoadConstantInputs(layer, data) {
         return `
             <div class="form-group">
                 <label for="workK_${layer._leaflet_id}">Коэффициент занятости (workK):</label>
-                <input type="number" step="0.01" class="form-control" id="workK_${layer._leaflet_id}" value="${data.loadConstants.workK}" onchange="updatePolygonData('${layer._leaflet_id}', 'workK', this.value)" ${data.calculated ? 'disabled' : ''}>
+                <input type="number" min="0.01" max="1.00" step="0.01" class="form-control" id="workK_${layer._leaflet_id}" value="${data.loadConstants.workK}" onchange="updatePolygonData('${layer._leaflet_id}', 'workK', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
             <div class="form-group">
-                <label for="modalSplitCar_${layer._leaflet_id}">Модальный сплит авто (modalSplitCar):</label>
-                <input type="number" step="0.01" class="form-control" id="modalSplitCar_${layer._leaflet_id}" value="${data.loadConstants.modalSplitCar}" onchange="updatePolygonData('${layer._leaflet_id}', 'modalSplitCar', this.value)" ${data.calculated ? 'disabled' : ''}>
+                <label for="modalSplitMetro_${layer._leaflet_id}">Модальный сплит коэфф ОТ:</label>
+                <input type="number" min="0.01" max="1.00" step="0.01" class="form-control" id="modalSplitMetro_${layer._leaflet_id}" value="${data.loadConstants.modalSplitMetro}" onchange="updatePolygonData('${layer._leaflet_id}', 'modalSplitMetro', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
             <div class="form-group">
-                <label for="modalSplitMetro_${layer._leaflet_id}">Модальный сплит метро (modalSplitMetro):</label>
-                <input type="number" step="0.01" class="form-control" id="modalSplitMetro_${layer._leaflet_id}" value="${data.loadConstants.modalSplitMetro}" onchange="updatePolygonData('${layer._leaflet_id}', 'modalSplitMetro', this.value)" ${data.calculated ? 'disabled' : ''}>
+                <label for="carK_${layer._leaflet_id}">Коэффициент заполняемости авто:</label>
+                <input type="number" min="0.01" step="0.1" class="form-control" id="carK_${layer._leaflet_id}" value="${data.loadConstants.carK}" onchange="updatePolygonData('${layer._leaflet_id}', 'carK', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
             <div class="form-group">
-                <label for="carK_${layer._leaflet_id}">Коэффициент заполнения авто (carK):</label>
-                <input type="number" step="0.1" class="form-control" id="carK_${layer._leaflet_id}" value="${data.loadConstants.carK}" onchange="updatePolygonData('${layer._leaflet_id}', 'carK', this.value)" ${data.calculated ? 'disabled' : ''}>
+                <label for="commercialPeakK_${layer._leaflet_id}">Коэфф нагрузки в час пик для коммерческой площади:</label>
+                <input type="number" min="0.01" step="0.01" class="form-control" id="commercialPeakK_${layer._leaflet_id}" value="${data.loadConstants.commercialPeakK}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialPeakK', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
             <div class="form-group">
-                <label for="commercialPeakK_${layer._leaflet_id}">Пиковый коэффициент коммерческой площади (commercialPeakK):</label>
-                <input type="number" step="0.01" class="form-control" id="commercialPeakK_${layer._leaflet_id}" value="${data.loadConstants.commercialPeakK}" onchange="updatePolygonData('${layer._leaflet_id}', 'commercialPeakK', this.value)" ${data.calculated ? 'disabled' : ''}>
+                <label for="residentalPeakK_${layer._leaflet_id}">Коэфф нагрузки в час пик для жилой площади:</label>
+                <input type="number" min="0.01" step="0.01" class="form-control" id="residentalPeakK_${layer._leaflet_id}" value="${data.loadConstants.residentalPeakK}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentalPeakK', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
             <div class="form-group">
-                <label for="residentalPeakK_${layer._leaflet_id}">Пиковый коэффициент жилой площади (residentalPeakK):</label>
-                <input type="number" step="0.01" class="form-control" id="residentalPeakK_${layer._leaflet_id}" value="${data.loadConstants.residentalPeakK}" onchange="updatePolygonData('${layer._leaflet_id}', 'residentalPeakK', this.value)" ${data.calculated ? 'disabled' : ''}>
+                <label for="residentalPeakK_${layer._leaflet_id}">Коэфф трафика в центр:</label>
+                <input type="number" min="0.01" max="1.00" step="0.01" class="form-control" id="residentalPeakK_${layer._leaflet_id}" value="${data.loadConstants.directionCenterK}" onchange="updatePolygonData('${layer._leaflet_id}', 'directionCenterK', this.value)" ${data.calculated ? 'disabled' : ''}>
             </div>
         `;
     }
@@ -609,16 +614,20 @@
 
         const loadConstants = data.loadConstants;
         const workK = loadConstants.workK;
-        const modalSplit = type === 'car' ? loadConstants.modalSplitCar : loadConstants.modalSplitMetro;
+        const modalSplit = type === 'car' ? (1 - loadConstants.modalSplitMetro) : loadConstants.modalSplitMetro;
         const carK = type === 'car' ? loadConstants.carK : 1;
 
         const commercialPeakK = loadConstants.commercialPeakK;
         const residentalPeakK = loadConstants.residentalPeakK;
 
-        const directionK = direction === 'center' ? loadConstants.directionCenterK : loadConstants.directionOutK;
+        const directionK = direction === 'center' ? loadConstants.directionCenterK : (1-loadConstants.directionCenterK);
 
         const loadResidental = totalResidentialHumans * workK * modalSplit / carK * residentalPeakK * directionK;
         const loadCommercial = totalCommercialHumans * workK * modalSplit / carK * commercialPeakK * directionK;
+
+        if (type === 'car') {
+            return [loadCommercial, loadResidental]
+        }
 
         return loadCommercial + loadResidental;
     }
@@ -680,6 +689,7 @@
                 if (loader) {
                     document.getElementById(`loader_${layerId}`).style.display = 'none';
                 }
+                hideTimeSliderLoader();
             });
         });
     }
@@ -710,7 +720,6 @@
 
             const reachableStations = response.data.elements;
 
-            const totalPassengerFlow = reachableStations.reduce((total, station) => total + 500, 0);
 
             let nodeIds = [];
             reachableStations.forEach(station => {
@@ -718,10 +727,14 @@
             });
             let metroFlowData = await getMetroData(nodeIds);
 
+            polygonDataMap[layerId].metroMarkers = {data: metroFlowData, markers: {}};
+
+            const totalPassengerFlow = Object.keys(metroFlowData).reduce((total, key) => total + (metroFlowData[key].flow || 0), 0);
+
             reachableStations.forEach(station => {
                 let stationKey = station.id;
 
-                const currentPassengerFlow = metroFlowData[stationKey] ? metroFlowData[stationKey].flow : 500;
+                const currentPassengerFlow = metroFlowData[stationKey] ? metroFlowData[stationKey].flow : 0;
                 const capacityPerHour = metroFlowData[stationKey] ? metroFlowData[stationKey].bandwidth : 1000;
                 const stationAdditionalLoad = (currentPassengerFlow / totalPassengerFlow) * totalAdditionalLoad;
 
@@ -741,6 +754,7 @@
                     let marker = L.marker([station.lat, station.lon], {icon: customIcon});
 
                     stationDataMap[stationKey] = {
+                        name: station.tags["name"],
                         marker: marker,
                         trafficData: {
                             currentPassengerFlow: currentPassengerFlow,
@@ -751,6 +765,7 @@
                     };
 
                     marker.bindPopup(getMetroPopupContent(stationKey))
+                    polygonDataMap[layerId].metroMarkers.markers[stationKey] = 1;
 
                     metroMarkersCluster.addLayer(marker);
                 }
@@ -775,14 +790,15 @@
     function getMetroPopupContent(stationKey) {
         const stationData = stationDataMap[stationKey];
         const trafficData = stationData.trafficData;
+        const name = stationData.name;
         const isEditable = stationData.isEditable || false;
 
         return `
-            <h5>Станция метро/МЦД</h5>
+            <h5>${name}</h5>
             <div class="form-group">
                 <label for="currentPassengerFlow_${stationKey}">Текущий пассажиропоток:</label>
                 <div style="display: flex; align-items: center;">
-                    <input class="form-control" type="number" id="currentPassengerFlow_${stationKey}" value="${trafficData.currentPassengerFlow}" ${isEditable ? '' : 'disabled'} />
+                    <input class="form-control" min="0" type="number" id="currentPassengerFlow_${stationKey}" value="${trafficData.currentPassengerFlow}" ${isEditable ? '' : 'disabled'} />
                     <button class="btn btn-link" onclick="toggleMetroEdit('${stationKey}', event)">
                        ${getIconLock(isEditable)}
                     </button>
@@ -791,7 +807,7 @@
             <div class="form-group">
                 <label for="capacityPerHour_${stationKey}">Пропускная способность:</label>
                 <div style="display: flex; align-items: center;">
-                    <input class="form-control" type="number" id="capacityPerHour_${stationKey}" value="${trafficData.capacityPerHour}" ${isEditable ? '' : 'disabled'} />
+                    <input class="form-control" min="0" type="number" id="capacityPerHour_${stationKey}" value="${trafficData.capacityPerHour}" ${isEditable ? '' : 'disabled'} />
                     <button class="btn btn-link" onclick="toggleMetroEdit('${stationKey}', event)">
                          ${getIconLock(isEditable)}
                     </button>
@@ -842,6 +858,36 @@
             .then(response => {
                 alert('Данные успешно сохранены');
                 stationData.isEditable = false;
+
+                for (let stationDataMapKey in stationDataMap) {
+                    stationDataMap[stationDataMapKey].trafficData.additionalLoad = 0;
+                }
+
+                for (let layerId in polygonDataMap) {
+                    //polygonDataMap[layerId].metroMarkers = {data: metroFlowData, markers: {}};
+                    //if (polygonDataMap[layerId].metroMarkers.markers[stationKey]) {
+                        for (let markersKey in polygonDataMap[layerId].metroMarkers.markers) {
+                            let metroFlowData = stationDataMap[markersKey].trafficData//
+                            const totalPassengerFlow = Object.keys(polygonDataMap[layerId].metroMarkers.data).reduce((total, key) => total + (stationDataMap[key].trafficData.currentPassengerFlow || 0), 0);
+
+                            let stationKey = markersKey;
+
+                            let additionalLoadCenter = calculateLoad(layerId, 'metro', 'center');
+                            let additionalLoadOut = calculateLoad(layerId, 'metro', 'out');
+                            let totalAdditionalLoad = additionalLoadCenter + additionalLoadOut;
+
+                            const currentPassengerFlow = metroFlowData ? metroFlowData.currentPassengerFlow : 0;
+                            const capacityPerHour = metroFlowData ? metroFlowData.capacityPerHour : 1000;
+                            const stationAdditionalLoad = (currentPassengerFlow / totalPassengerFlow) * totalAdditionalLoad;
+
+                            if (stationDataMap[stationKey]) {
+                                stationDataMap[stationKey].trafficData.additionalLoad += Math.round(stationAdditionalLoad);
+                                stationDataMap[stationKey].marker.getPopup().setContent(getMetroPopupContent(stationKey));
+                            }
+                        }
+                    //}
+                }
+
                 stationData.marker.getPopup().setContent(getMetroPopupContent(stationKey));
             })
             .catch(error => {
@@ -855,11 +901,12 @@
         let polygonLayer = drawnItems.getLayer(layerId);
         let data = polygonDataMap[layerId];
         const polygonCenter = polygonLayer.getBounds().getCenter();
-        let startCoords = [polygonCenter.lat, polygonCenter.lng];
+
 
         try {
+            let startCoords = [polygonCenter.lat, polygonCenter.lng];
             let cityCoords = await getNearestCityCenter([polygonCenter.lat, polygonCenter.lng]);
-            const time = getCurrentTimeFromSlider();
+            let time = getCurrentTimeFromSlider();
 
             if (time === '18:00') {
                 let temp = startCoords;
@@ -868,7 +915,7 @@
             }
 
             let responseToCity = await axios.get(`http://79.174.95.72:5000/route/v1/driving/${startCoords[1]},${startCoords[0]};${cityCoords[1]},${cityCoords[0]}?overview=false&alternatives=true&steps=false&annotations=true`);
-            let additionalLoadToCity = calculateLoad(layerId, 'car', 'center') / responseToCity.data.routes.length;
+            let additionalLoadToCityResidental = calculateLoad(layerId, 'car', 'center')[1] / responseToCity.data.routes.length;
 
             let oppositePoint = calculateOppositePoint([polygonCenter.lat, polygonCenter.lng], cityCoords, 10);
             if (time === '18:00') {
@@ -877,7 +924,7 @@
                 oppositePoint = temp;
             }
             let responseOpposite = await axios.get(`http://79.174.95.72:5000/route/v1/driving/${startCoords[1]},${startCoords[0]};${oppositePoint[1]},${oppositePoint[0]}?overview=false&alternatives=true&steps=false&annotations=true`);
-            let additionalLoadOpposite = calculateLoad(layerId, 'car', 'out') / responseOpposite.data.routes.length;
+            let additionalLoadOppositeResidental = calculateLoad(layerId, 'car', 'out')[1] / responseOpposite.data.routes.length;
 
             let allWayIds = [];
 
@@ -885,15 +932,63 @@
                 const nodesLeg = route.legs[0].annotation.nodes;
                 const wayIds = await getWayIdsByNodes(nodesLeg, [polygonCenter.lat, polygonCenter.lng], data.roadRadius);
                 allWayIds = [...new Set([...allWayIds, ...wayIds])];
-                await processRouteSegments(wayIds, nodesLeg, polygonCenter, data, additionalLoadToCity);
+                await processRouteSegments(wayIds, nodesLeg, polygonCenter, data, additionalLoadToCityResidental);
             }
 
             for (let route of responseOpposite.data.routes) {
                 const nodesLeg = route.legs[0].annotation.nodes;
                 const wayIds = await getWayIdsByNodes(nodesLeg, [polygonCenter.lat, polygonCenter.lng], data.roadRadius);
                 allWayIds = [...new Set([...allWayIds, ...wayIds])];
-                await processRouteSegments(wayIds, nodesLeg, polygonCenter, data, additionalLoadOpposite);
+                await processRouteSegments(wayIds, nodesLeg, polygonCenter, data, additionalLoadOppositeResidental);
             }
+
+
+
+
+
+
+            startCoords = [polygonCenter.lat, polygonCenter.lng];
+            cityCoords = await getNearestCityCenter([polygonCenter.lat, polygonCenter.lng]);
+            let temp = startCoords;
+            startCoords = cityCoords; // центр
+            cityCoords = temp; //дом
+
+            let responseToCityCommercial = await axios.get(`http://79.174.95.72:5000/route/v1/driving/${startCoords[1]},${startCoords[0]};${cityCoords[1]},${cityCoords[0]}?overview=false&alternatives=true&steps=false&annotations=true`);
+            let additionalLoadToCityCommercial = calculateLoad(layerId, 'car', 'center')[0] / responseToCityCommercial.data.routes.length;
+
+            oppositePoint = calculateOppositePoint([polygonCenter.lat, polygonCenter.lng], cityCoords, 10);
+            temp = cityCoords;
+            startCoords = oppositePoint;
+            oppositePoint = temp;
+
+            let responseOppositeCommercial = await axios.get(`http://79.174.95.72:5000/route/v1/driving/${startCoords[1]},${startCoords[0]};${oppositePoint[1]},${oppositePoint[0]}?overview=false&alternatives=true&steps=false&annotations=true`);
+            let additionalLoadOppositCommercial = calculateLoad(layerId, 'car', 'out')[0] / responseOppositeCommercial.data.routes.length;
+
+            for (let route of responseToCityCommercial.data.routes) {
+                const nodesLeg = route.legs[0].annotation.nodes;
+                const wayIds = await getWayIdsByNodes(nodesLeg, [polygonCenter.lat, polygonCenter.lng], data.roadRadius);
+                allWayIds = [...new Set([...allWayIds, ...wayIds])];
+                await processRouteSegments(wayIds, nodesLeg, polygonCenter, data, additionalLoadToCityCommercial);
+            }
+
+            for (let route of responseOppositeCommercial.data.routes) {
+                const nodesLeg = route.legs[0].annotation.nodes;
+                const wayIds = await getWayIdsByNodes(nodesLeg, [polygonCenter.lat, polygonCenter.lng], data.roadRadius);
+                allWayIds = [...new Set([...allWayIds, ...wayIds])];
+                await processRouteSegments(wayIds, nodesLeg, polygonCenter, data, additionalLoadOppositCommercial);
+            }
+
+
+
+
+
+
+
+
+
+
+
+
 
             const wayDataMap = await getWayData(allWayIds);
             for (let wayDataMapKey in wayDataMap) {
@@ -1240,13 +1335,13 @@
             <h5>Сегмент пути</h5>
             <p>Имя: ${segment.name || 'Без названия'}</p>
             <div class="form-group">
-                <label for="lanesInput_${segment.id}">Количество полос:</label>
-                <input class="form-control" type="number" id="lanesInput_${segment.id}" value="${segment.lanes}" onchange="updateSegmentLanes('${segment.id}', this.value)" />
+                <label for="lanesInput_${segment.id}" >Количество полос:</label>
+                <input class="form-control" type="number" min="1" id="lanesInput_${segment.id}" value="${segment.lanes}" onchange="updateSegmentLanes('${segment.id}', this.value)" />
             </div>
             <div class="form-group">
                 <label for="vehiclesPerHour_${segment.id}">Текущая загрузка (ТС/час):</label>
                 <div style="display: flex; align-items: center;">
-                    <input class="form-control" type="number" id="vehiclesPerHour_${segment.id}" value="${segment.trafficData.vehiclesPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
+                    <input class="form-control" min="0" type="number" id="vehiclesPerHour_${segment.id}" value="${segment.trafficData.vehiclesPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
                     <button class="btn btn-link" onclick="toggleSegmentEdit('${segment.id}', event)">
                         ${getIconLock(isEditable)}
                     </button>
@@ -1255,7 +1350,7 @@
             <div class="form-group">
                 <label for="capacityPerHour_${segment.id}">Пропускная способность (ТС/час):</label>
                 <div style="display: flex; align-items: center;">
-                    <input class="form-control" type="number" id="capacityPerHour_${segment.id}" value="${segment.trafficData.capacityPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
+                    <input class="form-control" min="0" type="number" id="capacityPerHour_${segment.id}" value="${segment.trafficData.capacityPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
                     <button class="btn btn-link" onclick="toggleSegmentEdit('${segment.id}', event)">
                         ${getIconLock(isEditable)}
                     </button>
@@ -1492,7 +1587,7 @@
                     const marker = L.marker(centerCoords, {
                         icon: L.divIcon({
                             className: 'traffic-info',
-                            html: `<div style="background: rgba(0,0,0,0.3); color: white; font-weight: 600; padding: 2px 5px; width: 100px; border-radius: 5px;">
+                            html: `<div id="wayother_${wayId}" style="background: rgba(0,0,0,0.3); color: white; font-weight: 600; padding: 2px 5px; width: 100px; border-radius: 5px;">
                                   ${vehiclesPerHour.toFixed(0)} ТС/час
                                </div>`
                         })
@@ -1545,7 +1640,7 @@
             <div class="form-group">
                 <label for="vehiclesPerHour_${segment.id}">Текущая загрузка (ТС/час):</label>
                 <div style="display: flex; align-items: center;">
-                    <input class="form-control" type="number" id="vehiclesPerHour_${segment.id}" value="${segment.trafficData.vehiclesPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
+                    <input class="form-control" min="0" type="number" id="vehiclesPerHour_${segment.id}" value="${segment.trafficData.vehiclesPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
                     <button class="btn btn-link" onclick="toggleOtherSegmentEdit('${segment.id}', event)">
                         ${getIconLock(isEditable)}
                     </button>
@@ -1554,7 +1649,7 @@
             <div class="form-group">
                 <label for="capacityPerHour_${segment.id}">Пропускная способность (ТС/час):</label>
                 <div style="display: flex; align-items: center;">
-                    <input class="form-control" type="number" id="capacityPerHour_${segment.id}" value="${segment.trafficData.capacityPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
+                    <input class="form-control" min="0" type="number" id="capacityPerHour_${segment.id}" value="${segment.trafficData.capacityPerHour.toFixed(0)}" ${isEditable ? '' : 'disabled'} />
                     <button class="btn btn-link" onclick="toggleOtherSegmentEdit('${segment.id}', event)">
                         ${getIconLock(isEditable)}
                     </button>
@@ -1600,6 +1695,10 @@
         axios.post('http://79.174.95.72:8001/update-ways', dataToSend)
             .then(response => {
                 alert('Данные успешно сохранены');
+                const data = document.querySelector(`#wayother_${segmentId}`);
+                data.innerHTML = `${segment.trafficData.vehiclesPerHour.toFixed(0)} ТС/час`
+
+
                 segment.isEditable = false;
                 if (popupLayer && popupLayer.isOpen()) {
                     popupLayer.setContent(getOtherSegmentPopupContent(segment));
@@ -1657,10 +1756,6 @@
         for (let layerId in polygonDataMap) {
             calculatePromises.push(calculateAll(layerId));
         }
-
-        Promise.all(calculatePromises).then(() => {
-            hideTimeSliderLoader();
-        });
     }
 
     function showTimeSliderLoader() {
@@ -1673,7 +1768,14 @@
 
     function clearMapExceptPolygons() {
         map.eachLayer(function (layer) {
-            if (layer !== drawnItems && !(layer instanceof L.TileLayer)) {
+            let inLayers = false;
+            for (let layersKey in drawnItems._layers) {
+                if (layer._layers && layer._layers[layersKey]) {
+                    inLayers = true
+                    break;
+                }
+            }
+            if (layer !== drawnItems && !drawnItems._layers[layer._leaflet_id] && !inLayers && !(layer instanceof L.TileLayer)) {
                 map.removeLayer(layer);
             }
         });
