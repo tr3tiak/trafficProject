@@ -82,7 +82,7 @@ async def ret_metro(request: Request):
         all_ids = item_data.get("id", [])
         
         
-        query_metro = "SELECT id, name, bandwidth FROM metro WHERE id =:id"
+        query_metro = "SELECT id, bandwidth FROM metro WHERE id =:id"
         query_flow = "SELECT metro_id, time, flow FROM flow_metro WHERE metro_id =:id AND time =:time" 
         for id in all_ids:
             try:
@@ -90,7 +90,6 @@ async def ret_metro(request: Request):
                 row_flow = await database.fetch_one(query_flow, values = {"id": int(id), "time": time_obj})
                 data = {
                     "id": row_metro["id"],
-                    "name": row_metro["name"],
                     "bandwidth": row_metro["bandwidth"],
                     "time": time_str,
                     "flow": row_flow["flow"]
@@ -185,7 +184,7 @@ async def upd_metro(request: Request):
                     
             query_metro = f"""
 INSERT INTO metro (id, bandwidth)
-VALUES (:id, :bandwith)
+VALUES (:id, :bandwidth)
 ON CONFLICT (id)
 DO UPDATE SET 
     bandwidth = EXCLUDED.bandwidth

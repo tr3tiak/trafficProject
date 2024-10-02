@@ -49,7 +49,7 @@ try:
         print(flow_list)
         try:
             # Выполнение SQL-запроса
-            cur.execute(sql_metro, (id, name, bandwidth))
+            cur.execute(sql_metro, (id, bandwidth))
             for time, flow in flow_list.items():
                 cur.execute(sql_flow, (id, time, flow))
             # Сохранение изменений сразу после каждой строки

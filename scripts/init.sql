@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS metro (
     id BIGINT PRIMARY KEY UNIQUE,
-    name VARCHAR(40),
     bandwidth FLOAT
 );
 
